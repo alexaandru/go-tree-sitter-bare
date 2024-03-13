@@ -5,8 +5,8 @@
 extern "C" {
 #endif
 
-#include "./length.h"
-#include "./subtree.h"
+#include "length.h"
+#include "subtree.h"
 #include "api.h"
 #include "parser.h"
 

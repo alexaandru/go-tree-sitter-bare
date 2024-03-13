@@ -1,5 +1,7 @@
 # Go Tree-Sitter Bare
 
+STATUS: Updated to Tree-Sitter v0.22.1
+
 ## About this fork
 
 This is a "fork" of @smacker's [go-tree-sitter](https://github.com/smacker/go-tree-sitter) as follows:
@@ -73,7 +75,7 @@ fmt.Println(child.EndByte()) // 9
 
 This repository provides grammars for many common languages out of the box.
 
-But if you need support for any other language you can keep it inside your own project or publish it as a separate repository to share with the community. 
+But if you need support for any other language you can keep it inside your own project or publish it as a separate repository to share with the community.
 
 See explanation on how to create a grammar for go-tree-sitter [here](https://github.com/smacker/go-tree-sitter/issues/57).
 
@@ -123,6 +125,7 @@ newTree := parser.Parse(tree, newText)
 You can filter AST by using [predicate](https://tree-sitter.github.io/tree-sitter/using-parsers#predicates) S-expressions.
 
 Similar to [Rust](https://github.com/tree-sitter/tree-sitter/tree/master/lib/binding_rust) or [WebAssembly](https://github.com/tree-sitter/tree-sitter/blob/master/lib/binding_web) bindings we support filtering on a few common predicates:
+
 - `eq?`, `not-eq?`
 - `match?`, `not-match?`
 

@@ -8,10 +8,10 @@ extern "C" {
 #include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include "./length.h"
-#include "./array.h"
-#include "./error_costs.h"
-#include "./host.h"
+#include "length.h"
+#include "array.h"
+#include "error_costs.h"
+#include "host.h"
 #include "api.h"
 #include "parser.h"
 

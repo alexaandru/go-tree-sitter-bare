@@ -3,7 +3,7 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
-#include "./point.h"
+#include "point.h"
 #include "api.h"
 
 typedef struct {

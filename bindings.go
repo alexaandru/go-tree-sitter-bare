@@ -25,6 +25,7 @@ var readFuncs = &readFuncsMap{funcs: map[int]ReadFunc{}}
 // Deprecated: use ParseCtx instead
 func Parse(content []byte, lang *Language) *Node {
 	n, _ := ParseCtx(context.Background(), content, lang)
+
 	return n
 }
 
@@ -32,7 +33,9 @@ func Parse(content []byte, lang *Language) *Node {
 // returns root node
 func ParseCtx(ctx context.Context, content []byte, lang *Language) (*Node, error) {
 	p := NewParser()
+
 	p.SetLanguage(lang)
+
 	tree, err := p.ParseCtx(ctx, nil, content)
 	if err != nil {
 		return nil, err
@@ -52,14 +55,18 @@ type Parser struct {
 func NewParser() *Parser {
 	cancel := uintptr(0)
 	p := &Parser{c: C.ts_parser_new(), cancel: &cancel}
+
 	C.ts_parser_set_cancellation_flag(p.c, (*C.size_t)(unsafe.Pointer(p.cancel)))
+
 	runtime.SetFinalizer(p, (*Parser).Close)
+
 	return p
 }
 
 // SetLanguage assignes Language to a parser
 func (p *Parser) SetLanguage(lang *Language) {
 	cLang := (*C.struct_TSLanguage)(lang.ptr)
+
 	C.ts_parser_set_language(p.c, cLang)
 }
 
@@ -91,12 +98,14 @@ var (
 // Deprecated: use ParseCtx instead
 func (p *Parser) Parse(oldTree *Tree, content []byte) *Tree {
 	t, _ := p.ParseCtx(context.Background(), oldTree, content)
+
 	return t
 }
 
 // ParseCtx produces new Tree from content using old tree
 func (p *Parser) ParseCtx(ctx context.Context, oldTree *Tree, content []byte) (*Tree, error) {
 	var BaseTree *C.TSTree
+
 	if oldTree != nil {
 		BaseTree = oldTree.c
 	}
@@ -117,7 +126,9 @@ func (p *Parser) ParseCtx(ctx context.Context, oldTree *Tree, content []byte) (*
 
 	input := C.CBytes(content)
 	BaseTree = C.ts_parser_parse_string(p.c, BaseTree, (*C.char)(input), C.uint32_t(len(content)))
+
 	close(parseComplete)
+
 	C.free(input)
 
 	return p.convertTSTree(ctx, BaseTree)
@@ -129,6 +140,7 @@ func (p *Parser) ParseCtx(ctx context.Context, oldTree *Tree, content []byte) (*
 // and faster access to edited part of the data
 func (p *Parser) ParseInput(oldTree *Tree, input Input) *Tree {
 	t, _ := p.ParseInputCtx(context.Background(), oldTree, input)
+
 	return t
 }
 
@@ -138,12 +150,14 @@ func (p *Parser) ParseInput(oldTree *Tree, input Input) *Tree {
 // and faster access to edited part of the data
 func (p *Parser) ParseInputCtx(ctx context.Context, oldTree *Tree, input Input) (*Tree, error) {
 	var BaseTree *C.TSTree
+
 	if oldTree != nil {
 		BaseTree = oldTree.c
 	}
 
 	funcID := readFuncs.register(input.Read)
 	BaseTree = C.call_ts_parser_parse(p.c, BaseTree, C.int(funcID), C.TSInputEncoding(input.Encoding))
+
 	readFuncs.unregister(funcID)
 
 	return p.convertTSTree(ctx, BaseTree)
@@ -163,6 +177,7 @@ func (p *Parser) convertTSTree(ctx context.Context, tsTree *C.TSTree) (*Tree, er
 		if ctx.Err() != nil {
 			// reset cancellation flag so the parse can be re-used
 			atomic.StoreUintptr(p.cancel, 0)
+
 			// context cancellation caused a timeout, return that error
 			return nil, ctx.Err()
 		}
@@ -196,6 +211,7 @@ func (p *Parser) Reset() {
 // SetIncludedRanges sets text ranges of a file
 func (p *Parser) SetIncludedRanges(ranges []Range) {
 	cRanges := make([]C.TSRange, len(ranges))
+
 	for i, r := range ranges {
 		cRanges[i] = C.TSRange{
 			start_point: C.TSPoint{
@@ -210,12 +226,14 @@ func (p *Parser) SetIncludedRanges(ranges []Range) {
 			end_byte:   C.uint32_t(r.EndByte),
 		}
 	}
+
 	C.ts_parser_set_included_ranges(p.c, (*C.TSRange)(unsafe.Pointer(&cRanges[0])), C.uint(len(ranges)))
 }
 
 // Debug enables debug output to stderr
 func (p *Parser) Debug() {
 	logger := C.stderr_logger_new(true)
+
 	C.ts_parser_set_logger(p.c, logger)
 }
 
@@ -256,9 +274,11 @@ type BaseTree struct {
 // thus no free is needed for it.
 func (p *Parser) newTree(c *C.TSTree) *Tree {
 	base := &BaseTree{c: c}
+
 	runtime.SetFinalizer(base, (*BaseTree).Close)
 
 	newTree := &Tree{p: p, BaseTree: base, cache: map[C.TSNode]*Node{}}
+
 	return newTree
 }
 
@@ -284,6 +304,7 @@ func (t *Tree) Copy() *Tree {
 // RootNode returns root node of a tree
 func (t *Tree) RootNode() *Node {
 	ptr := C.ts_tree_root_node(t.c)
+
 	return t.cachedNode(ptr)
 }
 
@@ -298,6 +319,7 @@ func (t *Tree) cachedNode(ptr C.TSNode) *Node {
 
 	n := &Node{ptr, t}
 	t.cache[ptr] = n
+
 	return n
 }
 
@@ -417,19 +439,15 @@ func (n Node) EndByte() uint32 {
 // StartPoint returns the node's start position in terms of rows and columns.
 func (n Node) StartPoint() Point {
 	p := C.ts_node_start_point(n.c)
-	return Point{
-		Row:    uint32(p.row),
-		Column: uint32(p.column),
-	}
+
+	return Point{Row: uint32(p.row), Column: uint32(p.column)}
 }
 
 // EndPoint returns the node's end position in terms of rows and columns.
 func (n Node) EndPoint() Point {
 	p := C.ts_node_end_point(n.c)
-	return Point{
-		Row:    uint32(p.row),
-		Column: uint32(p.column),
-	}
+
+	return Point{Row: uint32(p.row), Column: uint32(p.column)}
 }
 
 // Symbol returns the node's type as a Symbol.
@@ -445,7 +463,9 @@ func (n Node) Type() string {
 // String returns an S-expression representing the node as a string.
 func (n Node) String() string {
 	ptr := C.ts_node_string(n.c)
+
 	defer C.free(unsafe.Pointer(ptr))
+
 	return C.GoString(ptr)
 }
 
@@ -497,18 +517,21 @@ func (n Node) HasError() bool {
 // Parent returns the node's immediate parent.
 func (n Node) Parent() *Node {
 	nn := C.ts_node_parent(n.c)
+
 	return n.t.cachedNode(nn)
 }
 
 // Child returns the node's child at the given index, where zero represents the first child.
 func (n Node) Child(idx int) *Node {
 	nn := C.ts_node_child(n.c, C.uint32_t(idx))
+
 	return n.t.cachedNode(nn)
 }
 
 // NamedChild returns the node's *named* child at the given index.
 func (n Node) NamedChild(idx int) *Node {
 	nn := C.ts_node_named_child(n.c, C.uint32_t(idx))
+
 	return n.t.cachedNode(nn)
 }
 
@@ -526,7 +549,9 @@ func (n Node) NamedChildCount() uint32 {
 func (n Node) ChildByFieldName(name string) *Node {
 	str := C.CString(name)
 	defer C.free(unsafe.Pointer(str))
+
 	nn := C.ts_node_child_by_field_name(n.c, str, C.uint32_t(len(name)))
+
 	return n.t.cachedNode(nn)
 }
 
@@ -538,24 +563,28 @@ func (n Node) FieldNameForChild(idx int) string {
 // NextSibling returns the node's next sibling.
 func (n Node) NextSibling() *Node {
 	nn := C.ts_node_next_sibling(n.c)
+
 	return n.t.cachedNode(nn)
 }
 
 // NextNamedSibling returns the node's next *named* sibling.
 func (n Node) NextNamedSibling() *Node {
 	nn := C.ts_node_next_named_sibling(n.c)
+
 	return n.t.cachedNode(nn)
 }
 
 // PrevSibling returns the node's previous sibling.
 func (n Node) PrevSibling() *Node {
 	nn := C.ts_node_prev_sibling(n.c)
+
 	return n.t.cachedNode(nn)
 }
 
 // PrevNamedSibling returns the node's previous *named* sibling.
 func (n Node) PrevNamedSibling() *Node {
 	nn := C.ts_node_prev_named_sibling(n.c)
+
 	return n.t.cachedNode(nn)
 }
 
@@ -579,6 +608,7 @@ func (n Node) NamedDescendantForPointRange(start Point, end Point) *Node {
 		column: C.uint32_t(end.Column),
 	}
 	nn := C.ts_node_named_descendant_for_point_range(n.c, cStartPoint, cEndPoint)
+
 	return n.t.cachedNode(nn)
 }
 
@@ -601,6 +631,7 @@ func NewTreeCursor(n *Node) *TreeCursor {
 	}
 
 	runtime.SetFinalizer(c, (*TreeCursor).Close)
+
 	return c
 }
 
@@ -620,12 +651,14 @@ func (c *TreeCursor) Close() {
 // Reset re-initializes a tree cursor to start at a different node.
 func (c *TreeCursor) Reset(n *Node) {
 	c.t = n.t
+
 	C.ts_tree_cursor_reset(c.c, n.c)
 }
 
 // CurrentNode of the tree cursor.
 func (c *TreeCursor) CurrentNode() *Node {
 	n := C.ts_tree_cursor_current_node(c.c)
+
 	return c.t.cachedNode(n)
 }
 
@@ -734,12 +767,15 @@ func NewQuery(pattern []byte, lang *Language) (*Query, error) {
 		&erroff,
 		&errtype,
 	)
+
 	C.free(input)
+
 	if errtype != C.TSQueryError(QueryErrorNone) {
 		errorOffset := uint32(erroff)
 		// search for the line containing the offset
 		line := 1
 		line_start := 0
+
 		for i, c := range pattern {
 			line_start = i
 			if uint32(i) >= errorOffset {
@@ -749,11 +785,13 @@ func NewQuery(pattern []byte, lang *Language) (*Query, error) {
 				line++
 			}
 		}
+
 		column := int(errorOffset) - line_start
 		errorType := QueryErrorType(errtype)
 		errorTypeToString := QueryErrorTypeToString(errorType)
 
 		var message string
+
 		switch errorType {
 		// errors that apply to a single identifier
 		case QueryErrorNodeType:
@@ -803,6 +841,7 @@ func NewQuery(pattern []byte, lang *Language) (*Query, error) {
 	// this is just used for syntax validation - it does not actually filter anything
 	for i := uint32(0); i < q.PatternCount(); i++ {
 		predicates := q.PredicatesForPattern(i)
+
 		for _, steps := range predicates {
 			if len(steps) == 0 {
 				continue
@@ -812,12 +851,12 @@ func NewQuery(pattern []byte, lang *Language) (*Query, error) {
 				return nil, errors.New("predicate must begin with a literal value")
 			}
 
-			operator := q.StringValueForId(steps[0].ValueId)
-			switch operator {
+			switch operator := q.StringValueForId(steps[0].ValueId); operator {
 			case "eq?", "not-eq?":
 				if len(steps) != 4 {
 					return nil, fmt.Errorf("wrong number of arguments to `#%s` predicate. Expected 2, got %d", operator, len(steps)-2)
 				}
+
 				if steps[1].Type != QueryPredicateStepTypeCapture {
 					return nil, fmt.Errorf("first argument of `#%s` predicate must be a capture. Got %s", operator, q.StringValueForId(steps[1].ValueId))
 				}
@@ -825,9 +864,11 @@ func NewQuery(pattern []byte, lang *Language) (*Query, error) {
 				if len(steps) != 4 {
 					return nil, fmt.Errorf("wrong number of arguments to `#%s` predicate. Expected 2, got %d", operator, len(steps)-2)
 				}
+
 				if steps[1].Type != QueryPredicateStepTypeCapture {
 					return nil, fmt.Errorf("first argument of `#%s` predicate must be a capture. Got %s", operator, q.StringValueForId(steps[1].ValueId))
 				}
+
 				if steps[2].Type != QueryPredicateStepTypeString {
 					return nil, fmt.Errorf("second argument of `#%s` predicate must be a string. Got %s", operator, q.StringValueForId(steps[2].ValueId))
 				}
@@ -835,9 +876,11 @@ func NewQuery(pattern []byte, lang *Language) (*Query, error) {
 				if len(steps) < 3 || len(steps) > 4 {
 					return nil, fmt.Errorf("wrong number of arguments to `#%s` predicate. Expected 1 or 2, got %d", operator, len(steps)-2)
 				}
+
 				if steps[1].Type != QueryPredicateStepTypeString {
 					return nil, fmt.Errorf("first argument of `#%s` predicate must be a string. Got %s", operator, q.StringValueForId(steps[1].ValueId))
 				}
+
 				if len(steps) > 2 && steps[2].Type != QueryPredicateStepTypeString {
 					return nil, fmt.Errorf("second argument of `#%s` predicate must be a string. Got %s", operator, q.StringValueForId(steps[2].ValueId))
 				}
@@ -907,13 +950,17 @@ func (q *Query) PredicatesForPattern(patternIndex uint32) [][]QueryPredicateStep
 
 func (q *Query) CaptureNameForId(id uint32) string {
 	var length C.uint32_t
+
 	name := C.ts_query_capture_name_for_id(q.c, C.uint32_t(id), &length)
+
 	return C.GoStringN(name, C.int(length))
 }
 
 func (q *Query) StringValueForId(id uint32) string {
 	var length C.uint32_t
+
 	value := C.ts_query_string_value_for_id(q.c, C.uint32_t(id), &length)
+
 	return C.GoStringN(value, C.int(length))
 }
 
@@ -944,6 +991,7 @@ type QueryCursor struct {
 // NewQueryCursor creates a query cursor.
 func NewQueryCursor() *QueryCursor {
 	qc := &QueryCursor{c: C.ts_query_cursor_new(), t: nil}
+
 	runtime.SetFinalizer(qc, (*QueryCursor).Close)
 
 	return qc
@@ -953,6 +1001,7 @@ func NewQueryCursor() *QueryCursor {
 func (qc *QueryCursor) Exec(q *Query, n *Node) {
 	qc.q = q
 	qc.t = n.t
+
 	C.ts_query_cursor_exec(qc.c, q.c, n.c)
 }
 
@@ -965,6 +1014,7 @@ func (qc *QueryCursor) SetPointRange(startPoint Point, endPoint Point) {
 		row:    C.uint32_t(endPoint.Row),
 		column: C.uint32_t(endPoint.Column),
 	}
+
 	C.ts_query_cursor_set_point_range(qc.c, cStartPoint, cEndPoint)
 }
 
@@ -1047,8 +1097,11 @@ func (qc *QueryCursor) NextCapture() (*QueryMatch, uint32, bool) {
 // Copied From: https://github.com/klothoplatform/go-tree-sitter/commit/e351b20167b26d515627a4a1a884528ede5fef79
 
 func splitPredicates(steps []QueryPredicateStep) [][]QueryPredicateStep {
-	var predicateSteps [][]QueryPredicateStep
-	var currentSteps []QueryPredicateStep
+	var (
+		predicateSteps [][]QueryPredicateStep
+		currentSteps   []QueryPredicateStep
+	)
+
 	for _, step := range steps {
 		currentSteps = append(currentSteps, step)
 		if step.Type == QueryPredicateStepTypeDone {
@@ -1056,6 +1109,7 @@ func splitPredicates(steps []QueryPredicateStep) [][]QueryPredicateStep {
 			currentSteps = []QueryPredicateStep{}
 		}
 	}
+
 	return predicateSteps
 }
 
@@ -1097,6 +1151,7 @@ func (qc *QueryCursor) FilterPredicates(m *QueryMatch, input []byte) *QueryMatch
 					if captureName == expectedCaptureNameLeft {
 						nodeLeft = c.Node
 					}
+
 					if captureName == expectedCaptureNameRight {
 						nodeRight = c.Node
 					}
@@ -1105,6 +1160,7 @@ func (qc *QueryCursor) FilterPredicates(m *QueryMatch, input []byte) *QueryMatch
 						if (nodeLeft.Content(input) == nodeRight.Content(input)) != isPositive {
 							matchedAll = false
 						}
+
 						break
 					}
 				}
@@ -1120,6 +1176,7 @@ func (qc *QueryCursor) FilterPredicates(m *QueryMatch, input []byte) *QueryMatch
 
 					if (c.Node.Content(input) == expectedValueRight) != isPositive {
 						matchedAll = false
+
 						break
 					}
 				}
@@ -1143,6 +1200,7 @@ func (qc *QueryCursor) FilterPredicates(m *QueryMatch, input []byte) *QueryMatch
 
 				if regex.Match([]byte(c.Node.Content(input))) != isPositive {
 					matchedAll = false
+
 					break
 				}
 			}
@@ -1170,6 +1228,7 @@ func (m *readFuncsMap) register(f ReadFunc) int {
 
 	m.count++
 	m.funcs[m.count] = f
+
 	return m.count
 }
 
@@ -1198,5 +1257,6 @@ func callReadFunc(id C.int, byteIndex C.uint32_t, position C.TSPoint, bytesRead 
 
 	// Note: This memory is freed inside the C code; see bindings.c
 	input := C.CBytes(content)
+
 	return (*C.char)(input)
 }

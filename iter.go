@@ -35,21 +35,21 @@ func NewNamedIterator(n *Node, mode IterMode) *Iterator {
 	}
 }
 
-func (iter *Iterator) Next() (*Node, error) {
+func (iter *Iterator) Next() (n *Node, err error) {
 	if len(iter.nodesToVisit) == 0 {
 		return nil, io.EOF
 	}
 
-	var n *Node
+	var children []*Node
+
 	n, iter.nodesToVisit = iter.nodesToVisit[0], iter.nodesToVisit[1:]
 
-	var children []*Node
 	if iter.named {
-		for i := 0; i < int(n.NamedChildCount()); i++ {
+		for i := range int(n.NamedChildCount()) {
 			children = append(children, n.NamedChild(i))
 		}
 	} else {
-		for i := 0; i < int(n.ChildCount()); i++ {
+		for i := range int(n.ChildCount()) {
 			children = append(children, n.Child(i))
 		}
 	}
@@ -62,7 +62,8 @@ func (iter *Iterator) Next() (*Node, error) {
 	default:
 		panic("not implemented")
 	}
-	return n, nil
+
+	return
 }
 
 func (iter *Iterator) ForEach(fn func(*Node) error) error {
@@ -71,8 +72,8 @@ func (iter *Iterator) ForEach(fn func(*Node) error) error {
 		if err != nil {
 			return err
 		}
-		err = fn(n)
-		if err != nil {
+
+		if err = fn(n); err != nil {
 			return err
 		}
 	}

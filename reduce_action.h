@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include "./array.h"
+#include "array.h"
 #include "api.h"
 
 typedef struct {
