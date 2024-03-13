@@ -1,10 +1,11 @@
-# Go Tree-Sitter Bare
+# Go Tree-Sitter 🐻, err... it's the other bear (=bare)
 
 STATUS: Updated to Tree-Sitter v0.22.1
 
 ## About this fork
 
-This is a "fork" of @smacker's [go-tree-sitter](https://github.com/smacker/go-tree-sitter) as follows:
+This is a "fork" of @smacker's [go-tree-sitter](https://github.com/smacker/go-tree-sitter),
+read below to find out Why and How?
 
 ### Why
 
