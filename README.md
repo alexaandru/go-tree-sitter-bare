@@ -1,6 +1,6 @@
 # Go Tree-Sitter 🐻, err... it's the other bear (=bare)
 
-STATUS: Updated to Tree-Sitter v0.22.1
+STATUS: Updated to Tree-Sitter v0.22.2
 
 ## About this fork
 
