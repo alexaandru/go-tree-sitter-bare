@@ -1,6 +1,6 @@
 # Go Tree-Sitter 🐻, err... it's the other bear (=bare)
 
-[![Build Status](https://github.com/alexaandru/go-tree-sitter-bare/workflows/Test/badge.svg?branch=main)](https://github.com/alexaandru/go-tree-sitter-bare/actions/workflows/ci.yml?query=branch%3Amain)
+![Build Status](https://github.com/alexaandru/go-tree-sitter-bare/actions/workflows/ci.yml/badge.svg)
 
 Go bindings for [tree-sitter](https://github.com/tree-sitter/tree-sitter).
 This repository provides **ONLY** the Go bindings. For grammars see [go-sitter-forest](https://github.com/alexaandru/go-sitter-forest).
@@ -62,7 +62,8 @@ Inspect the syntax tree:
 ```go
 n := tree.RootNode()
 
-fmt.Println(n) // (program (lexical_declaration (variable_declarator (identifier) (number))))
+fmt.Println(n)
+// (program (lexical_declaration (variable_declarator (identifier) (number))))
 
 child := n.NamedChild(0)
 fmt.Println(child.Type()) // lexical_declaration
