@@ -1,5 +1,10 @@
 # Go Tree-Sitter 🐻, err... it's the other bear (=bare)
 
+[![Build Status](https://github.com/alexaandru/go-tree-sitter-bare/workflows/Test/badge.svg?branch=main)](https://github.com/alexaandru/go-tree-sitter-bare/actions/workflows/ci.yml?query=branch%3Amain)
+
+Go bindings for [tree-sitter](https://github.com/tree-sitter/tree-sitter).
+This repository provides **ONLY** the Go bindings. For grammars see [go-sitter-forest](https://github.com/alexaandru/go-sitter-forest).
+
 STATUS: Updated to Tree-Sitter v0.22.2
 
 ## About this fork
@@ -9,11 +14,11 @@ read below to find out Why and How?
 
 ### Why
 
-I needed strictly the sitter functionality without any of the parsers.
+I needed strictly the sitter functionality without any of the parsers and
 I needed this dependency to be as light as possible and had no need for
 the parsers as I have created [my own repo](https://github.com/alexaandru/go-sitter-forest)
 (also based on @smacker's work, but I needed a lot more parsers) and that
-repo is itself 1.3GB already, so I didn't need another 200MB dependency
+repo is itself 1.4GB already, so I didn't need another 200MB dependency
 on sitter, when the actual code is less than 2MB.
 
 ### How
@@ -28,13 +33,6 @@ So there it is, full transparency and giving credit where is due. I generally
 dislike deleting history, but simple `git rm`ing parsers from a clone, would've
 still kept them in git history and contribute to the repo size.
 
-## Original README continues below, unmodified
-
-[![Build Status](https://github.com/smacker/go-tree-sitter/workflows/Test/badge.svg?branch=master)](https://github.com/smacker/go-tree-sitter/actions/workflows/test.yml?query=branch%3Amaster)
-[![GoDoc](https://godoc.org/github.com/smacker/go-tree-sitter?status.svg)](https://godoc.org/github.com/smacker/go-tree-sitter)
-
-Golang bindings for [tree-sitter](https://github.com/tree-sitter/tree-sitter)
-
 ## Usage
 
 Create a parser with a grammar:
@@ -44,8 +42,8 @@ import (
 	"context"
 	"fmt"
 
-	sitter "github.com/smacker/go-tree-sitter"
-	"github.com/smacker/go-tree-sitter/javascript"
+	sitter "github.com/alexaandru/go-tree-sitter-bare"
+	"github.com/alexaandru/go-sitter-forest/javascript"
 )
 
 parser := sitter.NewParser()
@@ -71,20 +69,6 @@ fmt.Println(child.Type()) // lexical_declaration
 fmt.Println(child.StartByte()) // 0
 fmt.Println(child.EndByte()) // 9
 ```
-
-### Custom grammars
-
-This repository provides grammars for many common languages out of the box.
-
-But if you need support for any other language you can keep it inside your own project or publish it as a separate repository to share with the community.
-
-See explanation on how to create a grammar for go-tree-sitter [here](https://github.com/smacker/go-tree-sitter/issues/57).
-
-Known external grammars:
-
-- [Salesforce grammars](https://github.com/aheber/tree-sitter-sfapex) - including Apex, SOQL, and SOSL languages.
-- [Ruby](https://github.com/shagabutdinov/go-tree-sitter-ruby) - Deprecated, grammar is provided by main repo instead
-- [Go Template](https://github.com/mrjosh/helm-ls/tree/master/internal/tree-sitter/gotemplate) - Used for helm
 
 ### Editing
 
@@ -130,7 +114,7 @@ Similar to [Rust](https://github.com/tree-sitter/tree-sitter/tree/master/lib/bin
 - `eq?`, `not-eq?`
 - `match?`, `not-match?`
 
-Usage [example](./_examples/predicates/main.go):
+Usage example:
 
 ```go
 func main() {
@@ -168,26 +152,4 @@ func main() {
 
 // Output of this program:
 // SCREAMING_SNAKE_CASE_CONST
-```
-
-## Development
-
-### Updating a grammar
-
-Check if any updates for vendored files are available:
-
-```
-go run _automation/main.go check-updates
-```
-
-Update vendor files:
-
-- open `_automation/grammars.json`
-- modify `reference` (for tagged grammars) or `revision` (for grammars from a branch)
-- run `go run _automation/main.go update <grammar-name>`
-
-It is also possible to update all grammars in one go using
-
-```
-go run _automation/main.go update-all
 ```

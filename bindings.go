@@ -170,7 +170,7 @@ func (p *Parser) ParseInputCtx(ctx context.Context, oldTree *Tree, input Input) 
 // - operation limit hit
 // - no language set
 //
-// We check for all those conditions if ther return value is nil.
+// We check for all those conditions if there return value is nil.
 // see: https://github.com/tree-sitter/tree-sitter/blob/7890a29db0b186b7b21a0a95d99fa6c562b8316b/lib/include/tree_sitter/api.h#L209-L246
 func (p *Parser) convertTSTree(ctx context.Context, tsTree *C.TSTree) (*Tree, error) {
 	if tsTree == nil {
@@ -426,6 +426,10 @@ func (t SymbolType) String() string {
 	return symbolTypeNames[t]
 }
 
+func (n Node) ID() uintptr {
+	return uintptr(n.c.id)
+}
+
 // StartByte returns the node's start byte.
 func (n Node) StartByte() uint32 {
 	return uint32(C.ts_node_start_byte(n.c))
@@ -448,6 +452,15 @@ func (n Node) EndPoint() Point {
 	p := C.ts_node_end_point(n.c)
 
 	return Point{Row: uint32(p.row), Column: uint32(p.column)}
+}
+
+func (n Node) Range() Range {
+	return Range{
+		StartByte:  n.StartByte(),
+		EndByte:    n.EndByte(),
+		StartPoint: n.StartPoint(),
+		EndPoint:   n.EndPoint(),
+	}
 }
 
 // Symbol returns the node's type as a Symbol.
@@ -598,7 +611,7 @@ func (n Node) Content(input []byte) string {
 	return string(input[n.StartByte():n.EndByte()])
 }
 
-func (n Node) NamedDescendantForPointRange(start Point, end Point) *Node {
+func (n Node) NamedDescendantForPointRange(start, end Point) *Node {
 	cStartPoint := C.TSPoint{
 		row:    C.uint32_t(start.Row),
 		column: C.uint32_t(start.Column),
@@ -774,10 +787,10 @@ func NewQuery(pattern []byte, lang *Language) (*Query, error) {
 		errorOffset := uint32(erroff)
 		// search for the line containing the offset
 		line := 1
-		line_start := 0
+		lineStart := 0
 
 		for i, c := range pattern {
-			line_start = i
+			lineStart = i
 			if uint32(i) >= errorOffset {
 				break
 			}
@@ -786,19 +799,15 @@ func NewQuery(pattern []byte, lang *Language) (*Query, error) {
 			}
 		}
 
-		column := int(errorOffset) - line_start
+		column := int(errorOffset) - lineStart
 		errorType := QueryErrorType(errtype)
 		errorTypeToString := QueryErrorTypeToString(errorType)
 
 		var message string
 
 		switch errorType {
-		// errors that apply to a single identifier
-		case QueryErrorNodeType:
-			fallthrough
-		case QueryErrorField:
-			fallthrough
-		case QueryErrorCapture:
+		// Errors that apply to a single identifier.
+		case QueryErrorNodeType, QueryErrorField, QueryErrorCapture:
 			// find identifier at input[errorOffset]
 			// and report it in the error message
 			s := string(pattern[errorOffset:])
@@ -812,13 +821,7 @@ func NewQuery(pattern []byte, lang *Language) (*Query, error) {
 					errorTypeToString, line, column)
 			}
 
-		// errors the report position
-		case QueryErrorSyntax:
-			fallthrough
-		case QueryErrorStructure:
-			fallthrough
-		case QueryErrorLanguage:
-			fallthrough
+		// Errors the report position: QueryErrorSyntax, QueryErrorStructure, QueryErrorLanguage.
 		default:
 			s := string(pattern[errorOffset:])
 			lines := strings.Split(s, "\n")
@@ -839,7 +842,7 @@ func NewQuery(pattern []byte, lang *Language) (*Query, error) {
 
 	// Copied from: https://github.com/klothoplatform/go-tree-sitter/commit/e351b20167b26d515627a4a1a884528ede5fef79
 	// this is just used for syntax validation - it does not actually filter anything
-	for i := uint32(0); i < q.PatternCount(); i++ {
+	for i := range q.PatternCount() {
 		predicates := q.PredicatesForPattern(i)
 
 		for _, steps := range predicates {
@@ -974,7 +977,7 @@ const (
 	QuantifierOneOrMore
 )
 
-func (q *Query) CaptureQuantifierForId(id uint32, captureId uint32) Quantifier {
+func (q *Query) CaptureQuantifierForId(id, captureId uint32) Quantifier {
 	return Quantifier(C.ts_query_capture_quantifier_for_id(q.c, C.uint32_t(id), C.uint32_t(captureId)))
 }
 
@@ -1005,7 +1008,7 @@ func (qc *QueryCursor) Exec(q *Query, n *Node) {
 	C.ts_query_cursor_exec(qc.c, q.c, n.c)
 }
 
-func (qc *QueryCursor) SetPointRange(startPoint Point, endPoint Point) {
+func (qc *QueryCursor) SetPointRange(startPoint, endPoint Point) {
 	cStartPoint := C.TSPoint{
 		row:    C.uint32_t(startPoint.Row),
 		column: C.uint32_t(startPoint.Column),
