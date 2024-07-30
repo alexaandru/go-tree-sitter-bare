@@ -137,12 +137,12 @@ func (n Node) IsError() bool {
 	return bool(C.ts_node_is_error(n.c))
 }
 
-/**
+/** TODO
  * Get this node's parse state.
 /
 TSStateId ts_node_parse_state(TSNode self);
 
-/**
+/** TODO
  * Get the parse state after this node.
 /
 TSStateId ts_node_next_parse_state(TSNode self);
@@ -197,7 +197,7 @@ func (n Node) ChildByFieldName(name string) *Node {
 	return n.t.cachedNode(nn)
 }
 
-/**
+/** TODO
  * Get the node's child with the given numerical field id.
  *
  * You can convert a field name to an id using the
@@ -230,22 +230,22 @@ func (n Node) PrevNamedSibling() *Node {
 	return n.t.cachedNode(nn)
 }
 
-/**
+/** TODO
  * Get the node's first child that extends beyond the given byte offset.
  /
 TSNode ts_node_first_child_for_byte(TSNode self, uint32_t byte);
 
-/**
+/** TODO
  * Get the node's first named child that extends beyond the given byte offset.
  /
 TSNode ts_node_first_named_child_for_byte(TSNode self, uint32_t byte);
 
-/**
+/** TODO
  * Get the node's number of descendants, including one for the node itself.
  /
 uint32_t ts_node_descendant_count(TSNode self);
 
-/**
+/** TODO
  * Get the smallest node within this node that spans the given range of bytes
  * or (row, column) positions.
  /

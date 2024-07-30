@@ -155,7 +155,7 @@ func (p *Parser) IncludedRanges() Range {
 	}
 }
 
-/**
+/** TODO
  * Use the parser to parse some source code and create a syntax tree.
  *
  * If you are parsing this document for the first time, pass `NULL` for the
@@ -245,7 +245,7 @@ func (p *Parser) ParseCtx(ctx context.Context, oldTree *Tree, content []byte) (*
 	return p.convertTSTree(ctx, baseTree)
 }
 
-/**
+/** TODO
  * Use the parser to parse some source code stored in one contiguous buffer with
  * a given encoding. The first four parameters work the same as in the
  * [`ts_parser_parse_string`] method above. The final parameter indicates whether
@@ -310,7 +310,7 @@ func (p *Parser) TimeoutMicros() int {
 	return int(C.ts_parser_timeout_micros(p.c))
 }
 
-/**
+/** TODO
  * Set the parser's current cancellation flag pointer.
  *
  * If a non-null pointer is assigned, then the parser will periodically read
@@ -319,7 +319,7 @@ func (p *Parser) TimeoutMicros() int {
  /
 void ts_parser_set_cancellation_flag(TSParser *self, const size_t *flag);
 
-/**
+/** TODO
  * Get the parser's current cancellation flag pointer.
 const size_t *ts_parser_cancellation_flag(const TSParser *self);
 */
@@ -330,12 +330,12 @@ func (p *Parser) Debug() {
 	C.ts_parser_set_logger(p.c, logger)
 }
 
-/**
+/** TODO
  * Get the parser's current logger.
 TSLogger ts_parser_logger(const TSParser *self);
 */
 
-/**
+/** TODO
  * Set the file descriptor to which the parser should write debugging graphs
  * during parsing. The graphs are formatted in the DOT language. You may want
  * to pipe these graphs directly to a `dot(1)` process in order to generate

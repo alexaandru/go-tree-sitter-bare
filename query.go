@@ -276,7 +276,7 @@ func (q *Query) StringCount() uint32 {
 	return uint32(C.ts_query_string_count(q.c))
 }
 
-/**
+/** TODO
  * Get the byte offset where the given pattern starts in the query's source.
  *
  * This can be useful when combining queries by concatenating their source
@@ -317,12 +317,12 @@ func (q *Query) PredicatesForPattern(patternIndex uint32) [][]QueryPredicateStep
 	return splitPredicates(predicateSteps)
 }
 
-/*
+/* TODO
  * Check if the given pattern in the query has a single root node.
  /
 bool ts_query_is_pattern_rooted(const TSQuery *self, uint32_t pattern_index);
 
-/*
+/* TODO
  * Check if the given pattern in the query is 'non local'.
  *
  * A non-local pattern has multiple root nodes and can match within a
@@ -332,7 +332,7 @@ bool ts_query_is_pattern_rooted(const TSQuery *self, uint32_t pattern_index);
  /
 bool ts_query_is_pattern_non_local(const TSQuery *self, uint32_t pattern_index);
 
-/*
+/* TODO
  * Check if a given pattern is guaranteed to match once a given step is reached.
  * The step is specified by its byte offset in the query's source code.
  /
@@ -366,7 +366,7 @@ func (q *Query) StringValueForID(id uint32) string {
 	return C.GoStringN(value, C.int(length))
 }
 
-/**
+/** TODO
  * Disable a certain capture within a query.
  *
  * This prevents the capture from being returned in matches, and also avoids
@@ -375,7 +375,7 @@ func (q *Query) StringValueForID(id uint32) string {
  /
 void ts_query_disable_capture(TSQuery *self, const char *name, uint32_t length);
 
-/**
+/** TODO
  * Disable a certain pattern within a query.
  *
  * This prevents the pattern from matching and removes most of the overhead
@@ -433,7 +433,7 @@ func (qc *QueryCursor) Exec(q *Query, n *Node) {
 	C.ts_query_cursor_exec(qc.c, q.c, n.c)
 }
 
-/**
+/** TODO
  * Manage the maximum number of in-progress matches allowed by this query
  * cursor.
  *

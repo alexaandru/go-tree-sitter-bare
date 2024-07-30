@@ -110,7 +110,7 @@ func (t *Tree) RootNode() *Node {
 	return t.cachedNode(ptr)
 }
 
-/**
+/** TODO
  * Get the root node of the syntax tree, but with its position
  * shifted forward by the given offset.
 TSNode ts_tree_root_node_with_offset(
@@ -125,7 +125,7 @@ func (t *Tree) Language() Language {
 	return Language{ptr: unsafe.Pointer(C.ts_tree_language(t.c))}
 }
 
-/**
+/** TODO
  * Get the array of included ranges that was used to parse the syntax tree.
  *
  * The returned pointer must be freed by the caller.
@@ -166,7 +166,7 @@ func (t *Tree) GetChangedRanges(other *Tree, length uint32) *Range {
 	}
 }
 
-/**
+/** TODO
  * Write a DOT graph describing the syntax tree to the given file.
 void ts_tree_print_dot_graph(const TSTree *self, int file_descriptor);
 */
