@@ -2,6 +2,7 @@ package sitter
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"errors"
 	"reflect"
@@ -9,11 +10,12 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
-
-	"golang.org/x/sync/errgroup"
 )
+
+const exprSumLR = "(expression (sum left: (expression (number)) right: (expression (number))))"
 
 func TestRootNode(t *testing.T) {
 	n, err := ParseCtx(context.Background(), []byte("1 + 2"), getTestGrammar())
@@ -23,9 +25,8 @@ func TestRootNode(t *testing.T) {
 
 	testStartEnd(t, n, 0, 5, 0, 0, 0, 5)
 
-	expStr := "(expression (sum left: (expression (number)) right: (expression (number))))"
-	if x := n.String(); x != expStr {
-		t.Fatalf("Expected tree to be %q, got %q", expStr, x)
+	if x := n.String(); x != exprSumLR {
+		t.Fatalf("Expected tree to be %q, got %q", exprSumLR, x)
 	}
 
 	expType := "expression"
@@ -101,9 +102,8 @@ func TestTree(t *testing.T) {
 
 	testStartEnd(t, n, 0, 5, 0, 0, 0, 5)
 
-	expStr := "(expression (sum left: (expression (number)) right: (expression (number))))"
-	if x := n.String(); x != expStr {
-		t.Fatalf("Expected tree to be %q, got %q", expStr, x)
+	if x := n.String(); x != exprSumLR {
+		t.Fatalf("Expected tree to be %q, got %q", exprSumLR, x)
 	}
 
 	expType := "expression"
@@ -180,7 +180,7 @@ func TestTree(t *testing.T) {
 
 	n = tree2.RootNode()
 
-	expString := "(expression (sum left: (expression (number)) right: (expression (expression (sum left: (expression (number)) right: (expression (number)))))))"
+	expString := "(expression (sum left: (expression (number)) right: (expression " + exprSumLR + ")))"
 	if x := n.String(); x != expString {
 		t.Fatalf("Expected %q got %q", expString, x)
 	}
@@ -486,9 +486,8 @@ func TestIncludedRanges(t *testing.T) {
 		t.Fatal("Expected no error, got", err)
 	}
 
-	expString = "(expression (sum left: (expression (number)) right: (expression (number))))"
-	if x := commentTree.RootNode().String(); x != expString {
-		t.Fatalf("Expected root node to be %q, got %q", expString, x)
+	if x := commentTree.RootNode().String(); x != exprSumLR {
+		t.Fatalf("Expected root node to be %q, got %q", exprSumLR, x)
 	}
 }
 
@@ -581,11 +580,16 @@ func TestQueryError(t *testing.T) {
 }
 
 func TestParserLifetime(t *testing.T) {
-	g := new(errgroup.Group)
+	n, wg := 10, new(sync.WaitGroup)
+	errs := make([]error, n*n)
 
-	for range 10 {
-		g.Go(func() (err error) {
-			for range 10 {
+	for i := range n {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			for j := range n {
 				p := NewParser()
 				p.SetLanguage(getTestGrammar())
 
@@ -593,10 +597,9 @@ func TestParserLifetime(t *testing.T) {
 				// create some memory/CPU pressure
 				data = append(data, bytes.Repeat([]byte(" "), 1024*1024)...)
 
-				var tree *Tree
-
-				tree, err = p.ParseCtx(context.Background(), nil, data)
+				tree, err := p.ParseCtx(context.Background(), nil, data)
 				if err != nil {
+					errs[i*n+j] = err
 					return
 				}
 
@@ -605,12 +608,12 @@ func TestParserLifetime(t *testing.T) {
 				// must be a separate function, and it shouldn't accept the parser, only the Tree
 				doWorkLifetime(t, root)
 			}
-
-			return
-		})
+		}()
 	}
 
-	if err := g.Wait(); err != nil {
+	wg.Wait()
+
+	if err := cmp.Or(errs...); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -772,9 +775,8 @@ func TestParseInput(t *testing.T) {
 
 	n = tree.RootNode()
 
-	expStr := "(expression (sum left: (expression (number)) right: (expression (number))))"
-	if x := n.String(); x != expStr {
-		t.Fatalf("Expected %q got %q", expStr, x)
+	if x := n.String(); x != exprSumLR {
+		t.Fatalf("Expected %q got %q", exprSumLR, x)
 	}
 
 	if readTimes != 1 {
@@ -804,9 +806,8 @@ func TestParseInput(t *testing.T) {
 
 	n = tree.RootNode()
 
-	expStr = "(expression (sum left: (expression (number)) right: (expression (number))))"
-	if x := n.String(); x != expStr {
-		t.Fatalf("Expected %q got %q", expStr, x)
+	if x := n.String(); x != exprSumLR {
+		t.Fatalf("Expected %q got %q", exprSumLR, x)
 	}
 
 	if readTimes != 4 {
@@ -856,7 +857,11 @@ func TestCursorKeepsQuery(t *testing.T) {
 	parser := NewParser()
 	parser.SetLanguage(getTestGrammar())
 
-	tree := parser.Parse(nil, source)
+	tree, err := parser.Parse(nil, source)
+	if err != nil {
+		t.Fatal("Expected no error, got", err)
+	}
+
 	root := tree.RootNode()
 
 	for range 100 {
@@ -875,6 +880,54 @@ func TestCursorKeepsQuery(t *testing.T) {
 				break
 			}
 		}
+	}
+}
+
+func TestNodeChildContainingDescendant(t *testing.T) {
+	input := []byte(`1 + 2`)
+
+	root, err := ParseCtx(context.Background(), input, getTestGrammar())
+	if err != nil {
+		t.Fatal("Expected no error, got", err)
+	}
+
+	c := NewTreeCursor(root)
+	if c.CurrentNode() != root {
+		t.Fatal("Expected current node to be root")
+	}
+
+	c.GoToFirstChild()
+
+	n := c.CurrentNode()
+
+	exp := "(sum left: (expression (number)) right: (expression (number)))"
+	if act := n.String(); act != exp {
+		t.Fatalf("Expected %q, got %q", exp, act)
+	}
+
+	c.GoToFirstChild()
+	c.GoToNextSibling()
+	c.GoToNextSibling()
+	c.GoToFirstChild()
+
+	d := c.CurrentNode()
+
+	exp = "(number)"
+	if act := d.String(); act != exp {
+		t.Fatalf("Expected %q, got %q", exp, act)
+	}
+
+	c.GoToParent()
+
+	p := c.CurrentNode()
+
+	exp = "(expression (number))"
+	if act := p.String(); act != exp {
+		t.Fatalf("Expected %q, got %q", exp, act)
+	}
+
+	if act := n.ChildContainingDescendant(d); act != p {
+		t.Fatalf("Expected %v, got %v", p, act)
 	}
 }
 
@@ -1002,9 +1055,8 @@ func doWorkLifetime(tb testing.TB, n *Node) {
 	tb.Helper()
 
 	for range 100 {
-		exp := "(expression (sum left: (expression (number)) right: (expression (number))))"
-		if s := n.String(); s != exp {
-			tb.Fatalf("Expected %q, got %q", exp, s)
+		if s := n.String(); s != exprSumLR {
+			tb.Fatalf("Expected %q, got %q", exprSumLR, s)
 		}
 	}
 }

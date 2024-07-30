@@ -356,7 +356,11 @@ func TestFilterPredicates(t *testing.T) {
 			parser := NewParser()
 			parser.SetLanguage(getTestGrammar())
 
-			tree := parser.Parse(nil, []byte(tc.input))
+			tree, err := parser.Parse(nil, []byte(tc.input))
+			if err != nil {
+				t.Fatal("Expected no error, got", err)
+			}
+
 			root := tree.RootNode()
 
 			q, err := NewQuery([]byte(tc.query), getTestGrammar())

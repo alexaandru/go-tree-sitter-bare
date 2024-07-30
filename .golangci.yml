@@ -72,7 +72,7 @@ linters-settings:
   gocyclo:
     min-complexity: 235
   goconst:
-    min-occurrences: 3
+    min-occurrences: 5
   godot:
     scope: all # comments to be checked: `declarations`, `toplevel`, or `all`
     capital: true
@@ -162,6 +162,8 @@ linters-settings:
       - f *os.File
       - g *errgroup.Group
       - q *Query
+      - n *Node
+      - m *QueryMatch
   wsl:
     severity: warning
     strict-append: true
@@ -218,7 +220,7 @@ linters:
     - gocritic
     - gocyclo
     - godot
-    - godox
+    #- godox
     - gofmt
     - gofumpt
     #- goheader
@@ -331,7 +333,7 @@ issues:
   max-issues-per-linter: 0
   max-same-issues: 0
   new: false
-  fix: true
+  fix: false
 severity:
   default-severity: Info
   case-sensitive: false

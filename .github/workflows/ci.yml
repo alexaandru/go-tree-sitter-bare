@@ -7,6 +7,9 @@ on:
     branches:
       - main
 
+env:
+  GOFLAGS: -tags=test
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -16,4 +19,19 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - run: go test -tags test .
+      - run: |
+          go test -cover -coverprofile=unit.cov .
+          # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions
+          echo "::notice title=Unit Test Coverage::$(go tool cover -func=unit.cov|tail -n1|tr -s "\t")"
+  lint:
+    runs-on: ubuntu-latest
+    name: Lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Lint
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+          golangci-lint run .

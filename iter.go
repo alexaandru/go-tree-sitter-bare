@@ -2,20 +2,21 @@ package sitter
 
 import "io"
 
+// IterMode indicates the iteration mode.
 type IterMode int
 
+// Iterator for a tree of nodes.
+type Iterator struct {
+	nodesToVisit []*Node
+	mode         IterMode
+	named        bool
+}
+
+// The possible iteration modes.
 const (
 	DFSMode IterMode = iota
 	BFSMode
 )
-
-// Iterator for a tree of nodes.
-type Iterator struct {
-	named bool
-	mode  IterMode
-
-	nodesToVisit []*Node
-}
 
 // NewIterator takes a node and mode (DFS/BFS) and returns iterator over children of the node.
 func NewIterator(n *Node, mode IterMode) *Iterator {
@@ -35,6 +36,7 @@ func NewNamedIterator(n *Node, mode IterMode) *Iterator {
 	}
 }
 
+// Next returns the next node in the current iteration.
 func (iter *Iterator) Next() (n *Node, err error) {
 	if len(iter.nodesToVisit) == 0 {
 		return nil, io.EOF
@@ -66,15 +68,18 @@ func (iter *Iterator) Next() (n *Node, err error) {
 	return
 }
 
-func (iter *Iterator) ForEach(fn func(*Node) error) error {
+// ForEach iterates over all nodes, until an error is enconuntered
+// (or there are no more nodes).
+func (iter *Iterator) ForEach(fn func(*Node) error) (err error) {
+	var n *Node
+
 	for {
-		n, err := iter.Next()
-		if err != nil {
-			return err
+		if n, err = iter.Next(); err != nil {
+			return
 		}
 
 		if err = fn(n); err != nil {
-			return err
+			return
 		}
 	}
 }

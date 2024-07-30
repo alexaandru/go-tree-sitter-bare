@@ -105,7 +105,7 @@ typedef struct TSNode {
 typedef struct TSTreeCursor {
   const void *tree;
   const void *id;
-  uint32_t context[2];
+  uint32_t context[3];
 } TSTreeCursor;
 
 typedef struct TSQueryCapture {
@@ -548,8 +548,15 @@ TSStateId ts_node_next_parse_state(TSNode self);
 
 /**
  * Get the node's immediate parent.
+ * Prefer [`ts_node_child_containing_descendant`] for
+ * iterating over the node's ancestors.
  */
 TSNode ts_node_parent(TSNode self);
+
+/**
+ * Get the node's child that contains `descendant`.
+ */
+TSNode ts_node_child_containing_descendant(TSNode self, TSNode descendant);
 
 /**
  * Get the node's child at the given index, where zero represents the first
