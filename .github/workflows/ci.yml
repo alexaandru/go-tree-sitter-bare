@@ -1,4 +1,4 @@
-name: Test
+name: CI
 on:
   push:
     branches:
@@ -6,10 +6,6 @@ on:
   pull_request:
     branches:
       - main
-
-env:
-  GOFLAGS: -tags=test
-
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -20,7 +16,7 @@ jobs:
         with:
           go-version-file: go.mod
       - run: |
-          go test -cover -coverprofile=unit.cov .
+          make test
           # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions
           echo "::notice title=Unit Test Coverage::$(go tool cover -func=unit.cov|tail -n1|tr -s "\t")"
   lint:
@@ -32,6 +28,4 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Lint
-        run: |
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-          golangci-lint run .
+        run: make lint

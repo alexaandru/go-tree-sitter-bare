@@ -1,3 +1,17 @@
+GOFLAGS ?= -tags=test
+
+all: lint test
+
+test:
+	@GOFLAGS="$(GOFLAGS)" go test -cover -coverprofile=unit.cov .
+
+check_lint:
+	@golangci-lint version > /dev/null 2>&1 || \
+		go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+lint: check_lint
+	@GOFLAGS="$(GOFLAGS)" golangci-lint run . && echo -e "ok\tno linter warnings"
+
 # Show missing/unimplemented identifiers
 unimplemented_identifiers:
 	@comm -23 \

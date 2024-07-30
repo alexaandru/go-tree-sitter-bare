@@ -22,5 +22,5 @@ func getTestGrammar() *Language {
 }" >> $out
 
 # cleanup
-rm -rf *.toml setup.py grammar.js .gitignore .editorconfig Package.swift binding.gyp build/ node_modules/ src/ bindings/
-git restore Makefile
+rm -rf *.toml setup.py grammar.js .editorconfig Package.swift binding.gyp build/ node_modules/ src/ bindings/
+git restore Makefile .gitignore
