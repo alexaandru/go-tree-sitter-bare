@@ -8,6 +8,7 @@ import "unsafe" //nolint:gocritic // ok
 // It tracks its start and end positions in the source code,
 // as well as its relation to other nodes like its parent, siblings and children.
 type Node struct {
+	//	TODO: uint32_t context[4];
 	c C.TSNode
 	t *Tree // keep pointer on tree because node is valid only as long as tree is
 }

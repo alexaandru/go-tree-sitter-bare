@@ -1,8 +1,12 @@
 package sitter
 
 // #include "sitter.h"
-import "C"
-import "runtime"
+import "C" //nolint:gocritic // ok
+
+import (
+	"runtime"
+	"unsafe" //nolint:gocritic // ok
+)
 
 // BaseTree is needed as we use cache for nodes on normal tree object.
 // It prevent run of SetFinalizer as it introduces cycle we can workaround it using
@@ -77,41 +81,63 @@ func (p *Parser) newTree(c *C.TSTree) *Tree {
 
 	runtime.SetFinalizer(base, (*BaseTree).Close)
 
-	newTree := &Tree{p: p, BaseTree: base, cache: map[C.TSNode]*Node{}}
-
-	return newTree
+	return &Tree{p: p, BaseTree: base, cache: map[C.TSNode]*Node{}}
 }
 
-// Edit the syntax tree to keep it in sync with source code that has been edited.
-func (t *Tree) Edit(i EditInput) {
-	C.ts_tree_edit(t.c, i.c())
-}
-
-// Copy returns a new copy of a tree
+// Copy creates a shallow copy of the syntax tree. This is very fast.
+//
+// You need to copy a syntax tree in order to use it on more than one thread at
+// a time, as syntax trees are not thread safe.
 func (t *Tree) Copy() *Tree {
 	return t.p.newTree(C.ts_tree_copy(t.c))
 }
 
-// RootNode returns root node of a tree
+// Close should be called to ensure that all the memory used by the tree is freed.
+//
+// As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
+// parser.Close() will be called by Go's garbage collector and users would not have to call this manually.
+func (t *BaseTree) Close() {
+	if !t.isClosed {
+		C.ts_tree_delete(t.c)
+	}
+
+	t.isClosed = true
+}
+
+// RootNode returns root node of the syntax tree.
 func (t *Tree) RootNode() *Node {
 	ptr := C.ts_tree_root_node(t.c)
-
 	return t.cachedNode(ptr)
 }
 
-func (t *Tree) cachedNode(ptr C.TSNode) *Node {
-	if ptr.id == nil {
-		return nil
-	}
+/**
+ * Get the root node of the syntax tree, but with its position
+ * shifted forward by the given offset.
+TSNode ts_tree_root_node_with_offset(
+  const TSTree *self,
+  uint32_t offset_bytes,
+  TSPoint offset_extent
+);
+*/
 
-	if n, ok := t.cache[ptr]; ok {
-		return n
-	}
+// Language returns the language that was used to parse the syntax tree.
+func (t *Tree) Language() Language {
+	return Language{ptr: unsafe.Pointer(C.ts_tree_language(t.c))}
+}
 
-	n := &Node{ptr, t}
-	t.cache[ptr] = n
+/**
+ * Get the array of included ranges that was used to parse the syntax tree.
+ *
+ * The returned pointer must be freed by the caller.
+TSRange *ts_tree_included_ranges(const TSTree *self, uint32_t *length);
+*/
 
-	return n
+// Edit the syntax tree to keep it in sync with source code that has been edited.
+//
+// You MUST describe the edit both in terms of byte offsets and in terms of
+// (row, column) coordinates.
+func (t *Tree) Edit(i EditInput) {
+	C.ts_tree_edit(t.c, i.c())
 }
 
 // GetChangedRanges compares an old edited syntax tree to a new syntax tree
@@ -140,14 +166,22 @@ func (t *Tree) GetChangedRanges(other *Tree, length uint32) *Range {
 	}
 }
 
-// Close should be called to ensure that all the memory used by the tree is freed.
-//
-// As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
-// parser.Close() will be called by Go's garbage collector and users would not have to call this manually.
-func (t *BaseTree) Close() {
-	if !t.isClosed {
-		C.ts_tree_delete(t.c)
+/**
+ * Write a DOT graph describing the syntax tree to the given file.
+void ts_tree_print_dot_graph(const TSTree *self, int file_descriptor);
+*/
+
+func (t *Tree) cachedNode(ptr C.TSNode) *Node {
+	if ptr.id == nil {
+		return nil
 	}
 
-	t.isClosed = true
+	if n, ok := t.cache[ptr]; ok {
+		return n
+	}
+
+	n := &Node{ptr, t}
+	t.cache[ptr] = n
+
+	return n
 }

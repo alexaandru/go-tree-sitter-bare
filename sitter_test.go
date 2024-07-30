@@ -350,20 +350,20 @@ func TestGC(t *testing.T) {
 
 func TestSetOperationLimit(t *testing.T) {
 	parser := NewParser()
-	if x := parser.OperationLimit(); x != 0 {
+	if x := parser.TimeoutMicros(); x != 0 {
 		t.Fatalf("Expected parser.OperationLimit() == 0, got %d", x)
 	}
 
-	parser.SetOperationLimit(10)
+	parser.SetTimeoutMicros(10)
 
-	if x := parser.OperationLimit(); x != 10 {
+	if x := parser.TimeoutMicros(); x != 10 {
 		t.Fatalf("Expected parser.OperationLimit() == 10, got %d", x)
 	}
 }
 
 func TestOperationLimitParsing(t *testing.T) {
 	parser := NewParser()
-	parser.SetOperationLimit(10)
+	parser.SetTimeoutMicros(10)
 	parser.SetLanguage(getTestGrammar())
 
 	items := []string{}
