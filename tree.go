@@ -4,6 +4,7 @@ package sitter
 import "C" //nolint:gocritic // ok
 
 import (
+	"os"
 	"runtime"
 	"unsafe" //nolint:gocritic // ok
 )
@@ -110,27 +111,27 @@ func (t *Tree) RootNode() *Node {
 	return t.cachedNode(ptr)
 }
 
-/** TODO
- * Get the root node of the syntax tree, but with its position
- * shifted forward by the given offset.
-TSNode ts_tree_root_node_with_offset(
-  const TSTree *self,
-  uint32_t offset_bytes,
-  TSPoint offset_extent
-);
-*/
+// RootNodeWithOffset returns the root node of the syntax tree, but with its position
+// shifted forward by the given offset.
+func (t *Tree) RootNodeWithOffset(ofs uint32, extent Point) *Node {
+	ptr := C.ts_tree_root_node_with_offset(t.c, C.uint32_t(ofs),
+		C.TSPoint{row: C.uint32_t(extent.Row), column: C.uint32_t(extent.Column)})
+
+	return t.cachedNode(ptr)
+}
 
 // Language returns the language that was used to parse the syntax tree.
 func (t *Tree) Language() Language {
 	return Language{ptr: unsafe.Pointer(C.ts_tree_language(t.c))}
 }
 
-/** TODO
- * Get the array of included ranges that was used to parse the syntax tree.
- *
- * The returned pointer must be freed by the caller.
-TSRange *ts_tree_included_ranges(const TSTree *self, uint32_t *length);
-*/
+// IncludedRanges returns the array of included ranges that was used to parse the syntax tree.
+func (t *Tree) IncludedRanges() []Range {
+	count := C.uint32_t(0)
+	p := C.ts_tree_included_ranges(t.c, &count)
+
+	return mkRanges(p, count)
+}
 
 // Edit the syntax tree to keep it in sync with source code that has been edited.
 //
@@ -153,23 +154,24 @@ func (t *Tree) Edit(i EditInput) {
 // The returned array is allocated using `malloc` and the caller is responsible
 // for freeing it using `free`. The length of the array will be written to the
 // given `length` pointer.
-// TODO: Add unit tests.
-func (t *Tree) GetChangedRanges(other *Tree, length uint32) *Range {
-	l := C.uint32_t(length)
-	r := C.ts_tree_get_changed_ranges(t.c, other.c, &l)
+func (t *Tree) GetChangedRanges(other *Tree) []Range {
+	count := C.uint32_t(0)
+	p := C.ts_tree_get_changed_ranges(t.c, other.c, &count)
 
-	return &Range{
-		StartPoint: Point{Row: uint32(r.start_point.row), Column: uint32(r.start_point.column)},
-		EndPoint:   Point{Row: uint32(r.end_point.row), Column: uint32(r.end_point.column)},
-		StartByte:  uint32(r.start_byte),
-		EndByte:    uint32(r.end_byte),
-	}
+	return mkRanges(p, count)
 }
 
-/** TODO
- * Write a DOT graph describing the syntax tree to the given file.
-void ts_tree_print_dot_graph(const TSTree *self, int file_descriptor);
-*/
+// PrintDotGraph writes a DOT graph describing the syntax tree to the given file.
+func (t *Tree) PrintDotGraph(name string) (err error) {
+	f, err := os.Create(name)
+	if err != nil {
+		return
+	}
+
+	C.ts_tree_print_dot_graph(t.c, C.int32_t(f.Fd()))
+
+	return f.Close()
+}
 
 func (t *Tree) cachedNode(ptr C.TSNode) *Node {
 	if ptr.id == nil {
@@ -180,8 +182,26 @@ func (t *Tree) cachedNode(ptr C.TSNode) *Node {
 		return n
 	}
 
-	n := &Node{ptr, t}
+	n := &Node{c: ptr, t: t}
 	t.cache[ptr] = n
 
 	return n
+}
+
+func mkRanges(p *C.TSRange, count C.uint32_t) (out []Range) {
+	defer C.free(unsafe.Pointer(p))
+
+	ranges := unsafe.Slice(p, int(count))
+	out = make([]Range, count)
+
+	for i, r := range ranges {
+		out[i] = Range{
+			StartPoint: Point{Row: uint32(r.start_point.row), Column: uint32(r.start_point.column)},
+			EndPoint:   Point{Row: uint32(r.end_point.row), Column: uint32(r.end_point.column)},
+			StartByte:  uint32(r.start_byte),
+			EndByte:    uint32(r.end_byte),
+		}
+	}
+
+	return
 }

@@ -8,9 +8,9 @@ import "unsafe" //nolint:gocritic // ok
 // It tracks its start and end positions in the source code,
 // as well as its relation to other nodes like its parent, siblings and children.
 type Node struct {
-	//	TODO: uint32_t context[4];
-	c C.TSNode
-	t *Tree // keep pointer on tree because node is valid only as long as tree is
+	c       C.TSNode
+	t       *Tree     // keep pointer on tree because node is valid only as long as tree is
+	context [4]uint32 // TODO: How is this used upstream?
 }
 
 // Symbol indicates the type of symbol.
@@ -137,16 +137,15 @@ func (n Node) IsError() bool {
 	return bool(C.ts_node_is_error(n.c))
 }
 
-/** TODO
- * Get this node's parse state.
-/
-TSStateId ts_node_parse_state(TSNode self);
+// ParseState returns this node's parse state.
+func (n Node) ParseState() StateID {
+	return C.ts_node_parse_state(n.c)
+}
 
-/** TODO
- * Get the parse state after this node.
-/
-TSStateId ts_node_next_parse_state(TSNode self);
-*/
+// NextParseState returns the parse state after this node.
+func (n Node) NextParseState() StateID {
+	return C.ts_node_next_parse_state(n.c)
+}
 
 // Parent returns the node's immediate parent.
 func (n Node) Parent() *Node {
@@ -197,14 +196,14 @@ func (n Node) ChildByFieldName(name string) *Node {
 	return n.t.cachedNode(nn)
 }
 
-/** TODO
- * Get the node's child with the given numerical field id.
- *
- * You can convert a field name to an id using the
- * [`ts_language_field_id_for_name`] function.
-/
-TSNode ts_node_child_by_field_id(TSNode self, TSFieldId field_id);
-*/
+// ChildByFieldID returns the node's child with the given numerical field id.
+//
+// You can convert a field name to an id using the
+// `ts_language_field_id_for_name` function.
+func (n Node) ChildByFieldID(id FieldID) *Node {
+	nn := C.ts_node_child_by_field_id(n.c, id)
+	return n.t.cachedNode(nn)
+}
 
 // NextSibling returns the node's next sibling.
 func (n Node) NextSibling() *Node {
@@ -230,28 +229,42 @@ func (n Node) PrevNamedSibling() *Node {
 	return n.t.cachedNode(nn)
 }
 
-/** TODO
- * Get the node's first child that extends beyond the given byte offset.
- /
-TSNode ts_node_first_child_for_byte(TSNode self, uint32_t byte);
+// FirstChildForByte returns the node's first child that extends beyond the
+// given byte offset.
+func (n Node) FirstChildForByte(ofs uint32) *Node {
+	nn := C.ts_node_first_child_for_byte(n.c, C.uint32_t(ofs))
+	return n.t.cachedNode(nn)
+}
 
-/** TODO
- * Get the node's first named child that extends beyond the given byte offset.
- /
-TSNode ts_node_first_named_child_for_byte(TSNode self, uint32_t byte);
+// FirstNamedChildForByte returns the node's first named child that extends
+// beyond the given byte offset.
+func (n Node) FirstNamedChildForByte(ofs uint32) *Node {
+	nn := C.ts_node_first_named_child_for_byte(n.c, C.uint32_t(ofs))
+	return n.t.cachedNode(nn)
+}
 
-/** TODO
- * Get the node's number of descendants, including one for the node itself.
- /
-uint32_t ts_node_descendant_count(TSNode self);
+// DescendantCount returns the node's number of descendants, including one
+// for the node itself.
+func (n Node) DescendantCount() uint32 {
+	return uint32(C.ts_node_descendant_count(n.c))
+}
 
-/** TODO
- * Get the smallest node within this node that spans the given range of bytes
- * or (row, column) positions.
- /
-TSNode ts_node_descendant_for_byte_range(TSNode self, uint32_t start, uint32_t end);
-TSNode ts_node_descendant_for_point_range(TSNode self, TSPoint start, TSPoint end);
-*/
+// DescendantForByteRange returns the smallest node within this node that spans
+// the given range of bytes.
+func (n Node) DescendantForByteRange(start, end uint32) *Node {
+	nn := C.ts_node_descendant_for_byte_range(n.c, C.uint32_t(start), C.uint32_t(end))
+	return n.t.cachedNode(nn)
+}
+
+// DescendantForPointRange returns the smallest node within this node that spans
+// the given range of {row, column} positions.
+func (n Node) DescendantForPointRange(start, end Point) *Node {
+	nn := C.ts_node_descendant_for_point_range(n.c,
+		C.TSPoint{row: C.uint32_t(start.Row), column: C.uint32_t(start.Column)},
+		C.TSPoint{row: C.uint32_t(end.Row), column: C.uint32_t(end.Column)}) //nolint:nlreturn // false positive
+
+	return n.t.cachedNode(nn)
+}
 
 // NamedDescendantForByteRange returns the smallest named node within this node
 // that spans the given range of bytes.

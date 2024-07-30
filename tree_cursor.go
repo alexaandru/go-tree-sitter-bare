@@ -8,9 +8,9 @@ import "runtime"
 // possible using the `Node` functions. It is a mutable object that is always
 // on a certain syntax node, and can be moved imperatively to different nodes.
 type TreeCursor struct {
-	c *C.TSTreeCursor
-	t *Tree
-	// TODO: uint32_t context[3];
+	c       *C.TSTreeCursor
+	t       *Tree
+	context [3]uint32 // TODO: How is this used upstream?
 
 	isClosed bool
 }

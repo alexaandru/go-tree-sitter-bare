@@ -276,14 +276,14 @@ func (q *Query) StringCount() uint32 {
 	return uint32(C.ts_query_string_count(q.c))
 }
 
-/** TODO
- * Get the byte offset where the given pattern starts in the query's source.
- *
- * This can be useful when combining queries by concatenating their source
- * code strings.
- /
-uint32_t ts_query_start_byte_for_pattern(const TSQuery *self, uint32_t pattern_index);
-*/
+// StartByteForPattern returns the byte offset where the given pattern starts
+// in the query's source.
+//
+// This can be useful when combining queries by concatenating their source
+// code strings.
+func (q *Query) StartByteForPattern(patIdx uint32) uint32 {
+	return uint32(C.ts_query_start_byte_for_pattern(q.c, C.uint32_t(patIdx)))
+}
 
 // PredicatesForPattern returns all of the predicates for the given pattern in the query.
 //
@@ -317,27 +317,27 @@ func (q *Query) PredicatesForPattern(patternIndex uint32) [][]QueryPredicateStep
 	return splitPredicates(predicateSteps)
 }
 
-/* TODO
- * Check if the given pattern in the query has a single root node.
- /
-bool ts_query_is_pattern_rooted(const TSQuery *self, uint32_t pattern_index);
+// IsPatternRooted checks if the given pattern in the query has a single root node.
+func (q *Query) IsPatternRooted(patIdx uint32) bool {
+	return bool(C.ts_query_is_pattern_rooted(q.c, C.uint32_t(patIdx)))
+}
 
-/* TODO
- * Check if the given pattern in the query is 'non local'.
- *
- * A non-local pattern has multiple root nodes and can match within a
- * repeating sequence of nodes, as specified by the grammar. Non-local
- * patterns disable certain optimizations that would otherwise be possible
- * when executing a query on a specific range of a syntax tree.
- /
-bool ts_query_is_pattern_non_local(const TSQuery *self, uint32_t pattern_index);
+// IsPatternNonLocal checks if the given pattern in the query is 'non local'.
+//
+// A non-local pattern has multiple root nodes and can match within a
+// repeating sequence of nodes, as specified by the grammar. Non-local
+// patterns disable certain optimizations that would otherwise be possible
+// when executing a query on a specific range of a syntax tree.
+func (q *Query) IsPatternNonLocal(patIdx uint32) bool {
+	return bool(C.ts_query_is_pattern_non_local(q.c, C.uint32_t(patIdx)))
+}
 
-/* TODO
- * Check if a given pattern is guaranteed to match once a given step is reached.
- * The step is specified by its byte offset in the query's source code.
- /
-bool ts_query_is_pattern_guaranteed_at_step(const TSQuery *self, uint32_t byte_offset);
-*/
+// IsPatternGuaranteedAtStep checks if a given pattern is guaranteed to
+// match once a given step is reached.
+// The step is specified by its byte offset in the query's source code.
+func (q *Query) IsPatternGuaranteedAtStep(byteOfs uint32) bool {
+	return bool(C.ts_query_is_pattern_guaranteed_at_step(q.c, C.uint32_t(byteOfs)))
+}
 
 // CaptureNameForID returns the name and length of one of the query's captures,
 // or one of the  query's string literals. Each capture and string is associated
@@ -359,30 +359,31 @@ func (q *Query) CaptureQuantifierForID(id, captureID uint32) Quantifier {
 
 // StringValueForID returns the string value associated with the given query id.
 func (q *Query) StringValueForID(id uint32) string {
-	var length C.uint32_t
-
+	length := C.uint32_t(0)
 	value := C.ts_query_string_value_for_id(q.c, C.uint32_t(id), &length)
 
 	return C.GoStringN(value, C.int(length))
 }
 
-/** TODO
- * Disable a certain capture within a query.
- *
- * This prevents the capture from being returned in matches, and also avoids
- * any resource usage associated with recording the capture. Currently, there
- * is no way to undo this.
- /
-void ts_query_disable_capture(TSQuery *self, const char *name, uint32_t length);
+// DisableCapture disables a certain capture within a query.
+//
+// This prevents the capture from being returned in matches, and also avoids
+// any resource usage associated with recording the capture. Currently, there
+// is no way to undo this.
+func (q *Query) DisableCapture(name string) {
+	cName := C.CString(name)
+	defer C.free(unsafe.Pointer(cName))
 
-/** TODO
- * Disable a certain pattern within a query.
- *
- * This prevents the pattern from matching and removes most of the overhead
- * associated with the pattern. Currently, there is no way to undo this.
- /
-void ts_query_disable_pattern(TSQuery *self, uint32_t pattern_index);
-*/
+	C.ts_query_disable_capture(q.c, cName, C.uint32_t(len(name)))
+}
+
+// DisablePattern disables a certain pattern within a query.
+//
+// This prevents the pattern from matching and removes most of the overhead
+// associated with the pattern. Currently, there is no way to undo this.
+func (q *Query) DisablePattern(patIdx uint32) {
+	C.ts_query_disable_pattern(q.c, C.uint32_t(patIdx))
+}
 
 // NewQueryCursor creates a new query cursor.
 //
@@ -433,20 +434,30 @@ func (qc *QueryCursor) Exec(q *Query, n *Node) {
 	C.ts_query_cursor_exec(qc.c, q.c, n.c)
 }
 
-/** TODO
- * Manage the maximum number of in-progress matches allowed by this query
- * cursor.
- *
- * Query cursors have an optional maximum capacity for storing lists of
- * in-progress captures. If this capacity is exceeded, then the
- * earliest-starting match will silently be dropped to make room for further
- * matches. This maximum capacity is optional — by default, query cursors allow
- * any number of pending matches, dynamically allocating new space for them as
- * needed as the query is executed.
-bool ts_query_cursor_did_exceed_match_limit(const TSQueryCursor *self);
-uint32_t ts_query_cursor_match_limit(const TSQueryCursor *self);
-void ts_query_cursor_set_match_limit(TSQueryCursor *self, uint32_t limit);
-*/
+// Manage the maximum number of in-progress matches allowed by this query
+// cursor.
+//
+// Query cursors have an optional maximum capacity for storing lists of
+// in-progress captures. If this capacity is exceeded, then the
+// earliest-starting match will silently be dropped to make room for further
+// matches. This maximum capacity is optional — by default, query cursors allow
+// any number of pending matches, dynamically allocating new space for them as
+// needed as the query is executed.
+
+// DidExceedMatchLimit see above.
+func (qc *QueryCursor) DidExceedMatchLimit() bool {
+	return bool(C.ts_query_cursor_did_exceed_match_limit(qc.c))
+}
+
+// MatchLimit see above.
+func (qc *QueryCursor) MatchLimit() uint32 {
+	return uint32(C.ts_query_cursor_match_limit(qc.c))
+}
+
+// SetMatchLimit see above.
+func (qc *QueryCursor) SetMatchLimit(limit uint32) {
+	C.ts_query_cursor_set_match_limit(qc.c, C.uint32_t(limit))
+}
 
 // SetByteRange sets the range of bytes in which the query will be executed.
 func (qc *QueryCursor) SetByteRange(start, end uint32) {

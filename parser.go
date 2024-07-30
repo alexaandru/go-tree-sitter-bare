@@ -6,6 +6,7 @@ import "C" //nolint:gocritic // ok
 import (
 	"context"
 	"errors"
+	"os"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -143,16 +144,11 @@ func (p *Parser) SetIncludedRanges(ranges []Range) bool {
 //
 // The returned pointer is owned by the parser. The caller should not free it
 // or write to it.
-func (p *Parser) IncludedRanges() Range {
-	_cCount := C.uint32_t(0)
-	r := C.ts_parser_included_ranges(p.c, &_cCount)
+func (p *Parser) IncludedRanges() (out []Range) {
+	count := C.uint32_t(0)
+	pp := C.ts_parser_included_ranges(p.c, &count)
 
-	return Range{
-		StartPoint: Point{Row: uint32(r.start_point.row), Column: uint32(r.start_point.column)},
-		EndPoint:   Point{Row: uint32(r.end_point.row), Column: uint32(r.end_point.column)},
-		StartByte:  uint32(r.start_byte),
-		EndByte:    uint32(r.end_byte),
-	}
+	return mkRanges(pp, count)
 }
 
 /** TODO
@@ -335,13 +331,21 @@ func (p *Parser) Debug() {
 TSLogger ts_parser_logger(const TSParser *self);
 */
 
-/** TODO
- * Set the file descriptor to which the parser should write debugging graphs
- * during parsing. The graphs are formatted in the DOT language. You may want
- * to pipe these graphs directly to a `dot(1)` process in order to generate
- * SVG output. You can turn off this logging by passing a negative number.
-void ts_parser_print_dot_graphs(TSParser *self, int fd);
-*/
+// PrintDotGraphs can be used to write debugging graphs during parsing.
+//
+// The graphs are formatted in the DOT language. You may want
+// to pipe these graphs directly to a `dot(1)` process in order to generate
+// SVG output. You can turn off this logging by passing a negative number.
+func (p *Parser) PrintDotGraphs(name string) (err error) {
+	f, err := os.Create(name)
+	if err != nil {
+		return
+	}
+
+	C.ts_parser_print_dot_graphs(p.c, C.int32_t(f.Fd()))
+
+	return f.Close()
+}
 
 // convertTSTree converts the tree-sitter response into a *Tree or an error.
 //
