@@ -67,11 +67,10 @@ func NewParser() *Parser {
 	return p
 }
 
-// SetLanguage assignes Language to a parser
-func (p *Parser) SetLanguage(lang *Language) {
+// SetLanguage assigns Language to a parser.
+func (p *Parser) SetLanguage(lang *Language) bool {
 	cLang := (*C.struct_TSLanguage)(lang.ptr)
-
-	C.ts_parser_set_language(p.c, cLang)
+	return bool(C.ts_parser_set_language(p.c, cLang))
 }
 
 // Parse produces new Tree from content using old tree
@@ -159,7 +158,7 @@ func (p *Parser) Reset() {
 }
 
 // SetIncludedRanges sets text ranges of a file
-func (p *Parser) SetIncludedRanges(ranges []Range) {
+func (p *Parser) SetIncludedRanges(ranges []Range) bool {
 	cRanges := make([]C.TSRange, len(ranges))
 
 	for i, r := range ranges {
@@ -177,7 +176,7 @@ func (p *Parser) SetIncludedRanges(ranges []Range) {
 		}
 	}
 
-	C.ts_parser_set_included_ranges(p.c, (*C.TSRange)(unsafe.Pointer(&cRanges[0])), C.uint(len(ranges)))
+	return bool(C.ts_parser_set_included_ranges(p.c, (*C.TSRange)(unsafe.Pointer(&cRanges[0])), C.uint(len(ranges))))
 }
 
 // Debug enables debug output to stderr

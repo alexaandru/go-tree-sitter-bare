@@ -49,7 +49,10 @@ import (
 )
 
 parser := sitter.NewParser()
-parser.SetLanguage(javascript.GetLanguage())
+ok := parser.SetLanguage(javascript.GetLanguage())
+if !ok {
+    panic("cannot set language")
+}
 ```
 
 Parse some code:
