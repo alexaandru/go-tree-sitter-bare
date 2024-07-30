@@ -1,6 +1,6 @@
 package sitter
 
-// #include "bindings.h"
+// #include "sitter.h"
 import "C"
 import "runtime"
 

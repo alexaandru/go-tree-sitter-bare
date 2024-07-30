@@ -1,6 +1,6 @@
 package sitter //nolint:gocritic // ok
 
-// #include "bindings.h"
+// #include "sitter.h"
 import "C" //nolint:gocritic // ok
 
 import (

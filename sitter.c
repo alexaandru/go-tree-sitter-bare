@@ -1,5 +1,5 @@
 #include "api.h"
-#include "bindings.h"
+#include "sitter.h"
 #include <string.h>
 #include <stdio.h>
 
