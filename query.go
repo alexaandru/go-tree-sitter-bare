@@ -22,13 +22,13 @@ type Query struct {
 type QueryCursor struct {
 	c *C.TSQueryCursor
 	t *Tree
-	// keep a pointer to the query to avoid garbage collection
+	// NOTE: Keep a pointer to the query to avoid garbage collection.
 	q *Query
 
 	isClosed bool
 }
 
-// QueryCapture is a captured node by a query with an index
+// QueryCapture is a captured node by a query with an index.
 type QueryCapture struct {
 	Node  *Node
 	Index uint32
@@ -89,8 +89,18 @@ const (
 	QueryErrorLanguage
 )
 
-// NewQuery creates a query by specifying a string containing one or more patterns.
-// In case of error returns QueryError.
+// UnlimitedMaxDepth is used for turning off max depth limit for query cursor.
+const UnlimitedMaxDepth = uint32(C.UINT32_MAX)
+
+// NewQuery creates a new query from a string containing one or more S-expression
+// patterns. The query is associated with a particular language, and can
+// only be run on syntax nodes parsed with that language.
+//
+// If all of the given patterns are valid, this returns a `TSQuery`.
+// If a pattern is invalid, it returns an error which provides two pieces
+// of information about the problem:
+//  1. The byte offset of the error is written to the `error_offset` parameter.
+//  2. The type of error is written to the `error_type` parameter.
 func NewQuery(pattern []byte, lang *Language) (*Query, error) { //nolint:funlen,gocognit // ok
 	var (
 		erroff  C.uint32_t
@@ -239,65 +249,6 @@ func QueryErrorTypeToString(errorType QueryErrorType) string {
 	}
 }
 
-// PredicatesForPattern returns all of the predicates for the given pattern in the query.
-//
-// The predicates are represented as a single array of steps. There are three
-// types of steps in this array, which correspond to the three legal values for
-// the `type` field:
-//   - `TSQueryPredicateStepTypeCapture` - Steps with this type represent names
-//     of captures. Their `value_id` can be used with the
-//     [`ts_query_capture_name_for_id`] function to obtain the name of the capture.
-//   - `TSQueryPredicateStepTypeString` - Steps with this type represent literal
-//     strings. Their `value_id` can be used with the
-//     [`ts_query_string_value_for_id`] function to obtain their string value.
-//   - `TSQueryPredicateStepTypeDone` - Steps with this type are *sentinels*
-//     that represent the end of an individual predicate. If a pattern has two
-//     predicates, then there will be two steps with this `type` in the array.
-func (q *Query) PredicatesForPattern(patternIndex uint32) [][]QueryPredicateStep {
-	var ( //nolint:prealloc // no
-		length         C.uint32_t
-		predicateSteps []QueryPredicateStep
-	)
-
-	cPredicateStep := C.ts_query_predicates_for_pattern(q.c, C.uint32_t(patternIndex), &length)
-	cPredicateSteps := unsafe.Slice(cPredicateStep, int(length))
-
-	for _, s := range cPredicateSteps {
-		stepType := QueryPredicateStepType(s._type)
-		valueID := uint32(s.value_id)
-		predicateSteps = append(predicateSteps, QueryPredicateStep{stepType, valueID})
-	}
-
-	return splitPredicates(predicateSteps)
-}
-
-// CaptureNameForID returns the name and length of one of the query's captures,
-// or one of the  query's string literals. Each capture and string is associated
-// with a  numeric id based on the order that it appeared in the query's source.
-func (q *Query) CaptureNameForID(id uint32) string {
-	var length C.uint32_t
-
-	name := C.ts_query_capture_name_for_id(q.c, C.uint32_t(id), &length)
-
-	return C.GoStringN(name, C.int(length))
-}
-
-// StringValueForID returns the string value associated with the given query id.
-func (q *Query) StringValueForID(id uint32) string {
-	var length C.uint32_t
-
-	value := C.ts_query_string_value_for_id(q.c, C.uint32_t(id), &length)
-
-	return C.GoStringN(value, C.int(length))
-}
-
-// CaptureQuantifierForID returns the quantifier of the query's captures.
-// Each capture is associated with a numeric id based on the order that it
-// appeared in the query's source.
-func (q *Query) CaptureQuantifierForID(id, captureID uint32) Quantifier {
-	return Quantifier(C.ts_query_capture_quantifier_for_id(q.c, C.uint32_t(id), C.uint32_t(captureID)))
-}
-
 // Close should be called to ensure that all the memory used by the query is freed.
 //
 // As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
@@ -325,13 +276,153 @@ func (q *Query) StringCount() uint32 {
 	return uint32(C.ts_query_string_count(q.c))
 }
 
-// NewQueryCursor creates a query cursor.
+/**
+ * Get the byte offset where the given pattern starts in the query's source.
+ *
+ * This can be useful when combining queries by concatenating their source
+ * code strings.
+ /
+uint32_t ts_query_start_byte_for_pattern(const TSQuery *self, uint32_t pattern_index);
+*/
+
+// PredicatesForPattern returns all of the predicates for the given pattern in the query.
+//
+// The predicates are represented as a single array of steps. There are three
+// types of steps in this array, which correspond to the three legal values for
+// the `type` field:
+//   - `TSQueryPredicateStepTypeCapture` - Steps with this type represent names
+//     of captures. Their `value_id` can be used with the
+//     `ts_query_capture_name_for_id` function to obtain the name of the capture.
+//   - `TSQueryPredicateStepTypeString` - Steps with this type represent literal
+//     strings. Their `value_id` can be used with the
+//     `ts_query_string_value_for_id` function to obtain their string value.
+//   - `TSQueryPredicateStepTypeDone` - Steps with this type are *sentinels*
+//     that represent the end of an individual predicate. If a pattern has two
+//     predicates, then there will be two steps with this `type` in the array.
+func (q *Query) PredicatesForPattern(patternIndex uint32) [][]QueryPredicateStep {
+	var ( //nolint:prealloc // no
+		length         C.uint32_t
+		predicateSteps []QueryPredicateStep
+	)
+
+	cPredicateStep := C.ts_query_predicates_for_pattern(q.c, C.uint32_t(patternIndex), &length)
+	cPredicateSteps := unsafe.Slice(cPredicateStep, int(length))
+
+	for _, s := range cPredicateSteps {
+		stepType := QueryPredicateStepType(s._type)
+		valueID := uint32(s.value_id)
+		predicateSteps = append(predicateSteps, QueryPredicateStep{stepType, valueID})
+	}
+
+	return splitPredicates(predicateSteps)
+}
+
+/*
+ * Check if the given pattern in the query has a single root node.
+ /
+bool ts_query_is_pattern_rooted(const TSQuery *self, uint32_t pattern_index);
+
+/*
+ * Check if the given pattern in the query is 'non local'.
+ *
+ * A non-local pattern has multiple root nodes and can match within a
+ * repeating sequence of nodes, as specified by the grammar. Non-local
+ * patterns disable certain optimizations that would otherwise be possible
+ * when executing a query on a specific range of a syntax tree.
+ /
+bool ts_query_is_pattern_non_local(const TSQuery *self, uint32_t pattern_index);
+
+/*
+ * Check if a given pattern is guaranteed to match once a given step is reached.
+ * The step is specified by its byte offset in the query's source code.
+ /
+bool ts_query_is_pattern_guaranteed_at_step(const TSQuery *self, uint32_t byte_offset);
+*/
+
+// CaptureNameForID returns the name and length of one of the query's captures,
+// or one of the  query's string literals. Each capture and string is associated
+// with a  numeric id based on the order that it appeared in the query's source.
+func (q *Query) CaptureNameForID(id uint32) string {
+	var length C.uint32_t
+
+	name := C.ts_query_capture_name_for_id(q.c, C.uint32_t(id), &length)
+
+	return C.GoStringN(name, C.int(length))
+}
+
+// CaptureQuantifierForID returns the quantifier of the query's captures.
+// Each capture is associated with a numeric id based on the order that it
+// appeared in the query's source.
+func (q *Query) CaptureQuantifierForID(id, captureID uint32) Quantifier {
+	return Quantifier(C.ts_query_capture_quantifier_for_id(q.c, C.uint32_t(id), C.uint32_t(captureID)))
+}
+
+// StringValueForID returns the string value associated with the given query id.
+func (q *Query) StringValueForID(id uint32) string {
+	var length C.uint32_t
+
+	value := C.ts_query_string_value_for_id(q.c, C.uint32_t(id), &length)
+
+	return C.GoStringN(value, C.int(length))
+}
+
+/**
+ * Disable a certain capture within a query.
+ *
+ * This prevents the capture from being returned in matches, and also avoids
+ * any resource usage associated with recording the capture. Currently, there
+ * is no way to undo this.
+ /
+void ts_query_disable_capture(TSQuery *self, const char *name, uint32_t length);
+
+/**
+ * Disable a certain pattern within a query.
+ *
+ * This prevents the pattern from matching and removes most of the overhead
+ * associated with the pattern. Currently, there is no way to undo this.
+ /
+void ts_query_disable_pattern(TSQuery *self, uint32_t pattern_index);
+*/
+
+// NewQueryCursor creates a new query cursor.
+//
+// The cursor stores the state that is needed to iteratively search
+// for matches. To use the query cursor, first call `ts_query_cursor_exec`
+// to start running a given query on a given syntax node. Then, there are
+// two options for consuming the results of the query:
+//  1. Repeatedly call `ts_query_cursor_next_match` to iterate over all of the
+//     *matches* in the order that they were found. Each match contains the
+//     index of the pattern that matched, and an array of captures. Because
+//     multiple patterns can match the same set of nodes, one match may contain
+//     captures that appear *before* some of the captures from a previous match.
+//  2. Repeatedly call `ts_query_cursor_next_capture` to iterate over all of the
+//     individual *captures* in the order that they appear. This is useful if
+//     don't care about which pattern matched, and just want a single ordered
+//     sequence of captures.
+//
+// If you don't care about consuming all of the results, you can stop calling
+// `ts_query_cursor_next_match` or `ts_query_cursor_next_capture` at any point.
+//
+//	You can then start executing another query on another node by calling
+//	`ts_query_cursor_exec` again.
 func NewQueryCursor() *QueryCursor {
 	qc := &QueryCursor{c: C.ts_query_cursor_new(), t: nil}
 
 	runtime.SetFinalizer(qc, (*QueryCursor).Close)
 
 	return qc
+}
+
+// Close should be called to ensure that all the memory used by the query cursor is freed.
+//
+// As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
+// parser.Close() will be called by Go's garbage collector and users would not have to call this manually.
+func (qc *QueryCursor) Close() {
+	if !qc.isClosed {
+		C.ts_query_cursor_delete(qc.c)
+	}
+
+	qc.isClosed = true
 }
 
 // Exec executes the query on a given syntax node.
@@ -341,6 +432,21 @@ func (qc *QueryCursor) Exec(q *Query, n *Node) {
 
 	C.ts_query_cursor_exec(qc.c, q.c, n.c)
 }
+
+/**
+ * Manage the maximum number of in-progress matches allowed by this query
+ * cursor.
+ *
+ * Query cursors have an optional maximum capacity for storing lists of
+ * in-progress captures. If this capacity is exceeded, then the
+ * earliest-starting match will silently be dropped to make room for further
+ * matches. This maximum capacity is optional — by default, query cursors allow
+ * any number of pending matches, dynamically allocating new space for them as
+ * needed as the query is executed.
+bool ts_query_cursor_did_exceed_match_limit(const TSQueryCursor *self);
+uint32_t ts_query_cursor_match_limit(const TSQueryCursor *self);
+void ts_query_cursor_set_match_limit(TSQueryCursor *self, uint32_t limit);
+*/
 
 // SetByteRange sets the range of bytes in which the query will be executed.
 func (qc *QueryCursor) SetByteRange(start, end uint32) {
@@ -387,6 +493,11 @@ func (qc *QueryCursor) NextMatch() (*QueryMatch, bool) {
 	return qm, true
 }
 
+// RemoveMatch does smth... TODO
+func (qc *QueryCursor) RemoveMatch(matchID uint32) {
+	C.ts_query_cursor_remove_match(qc.c, C.uint32_t(matchID))
+}
+
 // NextCapture advances to the next capture of the currently running query.
 //
 // If there is a capture, write its match to `*match` and its index within
@@ -415,6 +526,24 @@ func (qc *QueryCursor) NextCapture() (*QueryMatch, uint32, bool) {
 
 	return qm, uint32(captureIndex), true
 }
+
+// SetMaxStartDepth sets the maximum start depth for a query cursor.
+//
+// This prevents cursors from exploring children nodes at a certain depth.
+// Note if a pattern includes many children, then they will still be checked.
+//
+// The zero max start depth value can be used as a special behavior and
+// it helps to destructure a subtree by staying on a node and using captures
+// for interested parts. Note that the zero max start depth only limit a search
+// depth for a pattern's root node but other nodes that are parts of the pattern
+// may be searched at any depth what defined by the pattern structure.
+//
+// Set to UnlimitedMaxDepth to remove the maximum start depth.
+func (qc *QueryCursor) SetMaxStartDepth(maxStartDepth uint32) {
+	C.ts_query_cursor_set_max_start_depth(qc.c, C.uint32_t(maxStartDepth))
+}
+
+// Non API.
 
 // FilterPredicates filters the given query match with the applicable predicates.
 func (qc *QueryCursor) FilterPredicates(m *QueryMatch, input []byte) *QueryMatch { //nolint:funlen,gocognit // ok
@@ -514,18 +643,6 @@ func (qc *QueryCursor) FilterPredicates(m *QueryMatch, input []byte) *QueryMatch
 	}
 
 	return qm
-}
-
-// Close should be called to ensure that all the memory used by the query cursor is freed.
-//
-// As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
-// parser.Close() will be called by Go's garbage collector and users would not have to call this manually.
-func (qc *QueryCursor) Close() {
-	if !qc.isClosed {
-		C.ts_query_cursor_delete(qc.c)
-	}
-
-	qc.isClosed = true
 }
 
 func (qe *QueryError) Error() string {
