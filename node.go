@@ -147,13 +147,13 @@ func (n Node) Parent() *Node {
 }
 
 // Child returns the node's child at the given index, where zero represents the first child.
-func (n Node) Child(idx int) *Node {
+func (n Node) Child(idx uint32) *Node {
 	nn := C.ts_node_child(n.c, C.uint32_t(idx))
 	return n.t.cachedNode(nn)
 }
 
 // NamedChild returns the node's *named* child at the given index.
-func (n Node) NamedChild(idx int) *Node {
+func (n Node) NamedChild(idx uint32) *Node {
 	nn := C.ts_node_named_child(n.c, C.uint32_t(idx))
 	return n.t.cachedNode(nn)
 }

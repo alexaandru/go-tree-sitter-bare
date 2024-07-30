@@ -114,6 +114,32 @@ func (t *Tree) cachedNode(ptr C.TSNode) *Node {
 	return n
 }
 
+// GetChangedRanges compares an old edited syntax tree to a new syntax tree
+// representing the same  document, returning an array of ranges whose
+// syntactic structure has changed.
+//
+// For this to work correctly, the old syntax tree must have been edited such
+// that its ranges match up to the new tree. Generally, you'll want to call
+// this function right after calling one of the [`ts_parser_parse`] functions.
+// You need to pass the old tree that was passed to parse, as well as the new
+// tree that was returned from that function.
+//
+// The returned array is allocated using `malloc` and the caller is responsible
+// for freeing it using `free`. The length of the array will be written to the
+// given `length` pointer.
+// TODO: Add unit tests.
+func (t *Tree) GetChangedRanges(other *Tree, length uint32) *Range {
+	l := C.uint32_t(length)
+	r := C.ts_tree_get_changed_ranges(t.c, other.c, &l)
+
+	return &Range{
+		StartPoint: Point{Row: uint32(r.start_point.row), Column: uint32(r.start_point.column)},
+		EndPoint:   Point{Row: uint32(r.end_point.row), Column: uint32(r.end_point.column)},
+		StartByte:  uint32(r.start_byte),
+		EndByte:    uint32(r.end_byte),
+	}
+}
+
 // Close should be called to ensure that all the memory used by the tree is freed.
 //
 // As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,

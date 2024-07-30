@@ -47,11 +47,11 @@ func (iter *Iterator) Next() (n *Node, err error) {
 	n, iter.nodesToVisit = iter.nodesToVisit[0], iter.nodesToVisit[1:]
 
 	if iter.named {
-		for i := range int(n.NamedChildCount()) {
+		for i := range n.NamedChildCount() {
 			children = append(children, n.NamedChild(i))
 		}
 	} else {
-		for i := range int(n.ChildCount()) {
+		for i := range n.ChildCount() {
 			children = append(children, n.Child(i))
 		}
 	}
