@@ -13,21 +13,21 @@ import (
 	"unsafe" //nolint:gocritic // ok
 )
 
-// Parser produces concrete syntax tree based on source code using Language
+// Parser produces concrete syntax tree based on source code using Language.
 type Parser struct {
 	c      *C.TSParser
-	cancel *uintptr
+	cancel *uint64
 	sync.Once
 }
 
-// Input defines parameters for parse method
+// Input defines parameters for parse method.
 type Input struct {
 	// TODO: void *payload; - what is it?
 	Read     ReadFunc
 	Encoding InputEncoding
 }
 
-// InputEncoding is a encoding of the text to parse
+// InputEncoding is a encoding of the text to parse.
 type InputEncoding int
 
 // ReadFunc is a function to retrieve a chunk of text at a given byte offset and (row, column) position
@@ -58,15 +58,15 @@ var (
 )
 
 // NewParser creates a new Parser.
-func NewParser() *Parser {
-	cancel := uintptr(0)
-	p := &Parser{c: C.ts_parser_new(), cancel: &cancel}
+func NewParser() (p *Parser) {
+	cancel := uint64(0)
+	p = &Parser{c: C.ts_parser_new()}
 
-	C.ts_parser_set_cancellation_flag(p.c, (*C.size_t)(unsafe.Pointer(p.cancel)))
+	p.SetCancellationFlag(&cancel)
 
 	runtime.SetFinalizer(p, (*Parser).Close)
 
-	return p
+	return
 }
 
 // Close should be called to ensure that all the memory used by the parse is freed.
@@ -220,7 +220,7 @@ func (p *Parser) ParseCtx(ctx context.Context, oldTree *Tree, content []byte) (*
 		go func() {
 			select {
 			case <-ctx.Done():
-				atomic.StoreUintptr(p.cancel, 1)
+				atomic.StoreUint64(p.cancel, 1)
 			case <-parseComplete:
 				return
 			}
@@ -302,19 +302,22 @@ func (p *Parser) TimeoutMicros() int {
 	return int(C.ts_parser_timeout_micros(p.c))
 }
 
-/** TODO
- * Set the parser's current cancellation flag pointer.
- *
- * If a non-null pointer is assigned, then the parser will periodically read
- * from this pointer during parsing. If it reads a non-zero value, it will
- * halt early, returning NULL. See [`ts_parser_parse`] for more information.
- /
-void ts_parser_set_cancellation_flag(TSParser *self, const size_t *flag);
+// SetCancellationFlag sets the parser's current cancellation flag pointer.
+//
+// If a non-null pointer is assigned, then the parser will periodically read
+// from this pointer during parsing. If it reads a non-zero value, it will
+// halt early, returning NULL. See [`ts_parser_parse`] for more information.
+func (p *Parser) SetCancellationFlag(flag *uint64) {
+	p.cancel = flag
+	C.ts_parser_set_cancellation_flag(p.c, (*C.size_t)(unsafe.Pointer(p.cancel)))
+}
 
-/** TODO
- * Get the parser's current cancellation flag pointer.
-const size_t *ts_parser_cancellation_flag(const TSParser *self);
-*/
+// CancellationFlag returns the parser's current cancellation flag pointer.
+// const size_t *ts_parser_cancellation_flag(const TSParser *self);
+func (p *Parser) CancellationFlag() *uint64 {
+	// return (*uint64)(unsafe.Pointer(C.ts_parser_cancellation_flag(p.c)))
+	return p.cancel
+}
 
 // Debug enables debug output to stderr.
 func (p *Parser) Debug() {
@@ -356,7 +359,7 @@ func (p *Parser) convertTSTree(ctx context.Context, tsTree *C.TSTree) (*Tree, er
 	if tsTree == nil {
 		if ctx.Err() != nil {
 			// reset cancellation flag so the parse can be re-used
-			atomic.StoreUintptr(p.cancel, 0)
+			atomic.StoreUint64(p.cancel, 0)
 
 			// context cancellation caused a timeout, return that error
 			return nil, ctx.Err()
