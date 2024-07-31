@@ -290,7 +290,7 @@ func (n Node) NamedDescendantForPointRange(start, end Point) *Node {
 // afterward will already reflect the edit. You only need to use `ts_node_edit`
 // when you have a `TSNode` instance that you want to keep and continue to use
 // after an edit.
-func (n Node) Edit(i EditInput) {
+func (n Node) Edit(i InputEdit) {
 	C.ts_node_edit(&n.c, i.c()) //nolint:gocritic // ok
 }
 

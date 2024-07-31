@@ -15,9 +15,9 @@ import (
 
 // Parser produces concrete syntax tree based on source code using Language
 type Parser struct {
-	c        *C.TSParser
-	cancel   *uintptr
-	isClosed bool
+	c      *C.TSParser
+	cancel *uintptr
+	sync.Once
 }
 
 // Input defines parameters for parse method
@@ -74,11 +74,7 @@ func NewParser() *Parser {
 // As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
 // parser.Close() will be called by Go's garbage collector and users would not have to call this manually.
 func (p *Parser) Close() {
-	if !p.isClosed {
-		C.ts_parser_delete(p.c)
-	}
-
-	p.isClosed = true
+	p.Do(func() { C.ts_parser_delete(p.c) })
 }
 
 // Language returns the parser's current language.

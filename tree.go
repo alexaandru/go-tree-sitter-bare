@@ -6,6 +6,7 @@ import "C" //nolint:gocritic // ok
 import (
 	"os"
 	"runtime"
+	"sync"
 	"unsafe" //nolint:gocritic // ok
 )
 
@@ -13,8 +14,8 @@ import (
 // It prevent run of SetFinalizer as it introduces cycle we can workaround it using
 // separate object for details see: https://github.com/golang/go/issues/7358#issuecomment-66091558
 type BaseTree struct {
-	c        *C.TSTree
-	isClosed bool
+	c *C.TSTree
+	sync.Once
 }
 
 // Tree represents the syntax tree of an entire source code file
@@ -24,10 +25,11 @@ type Tree struct {
 	*BaseTree
 
 	// p is a pointer to a Parser that produced the Tree. Only used to keep Parser alive.
-	// Otherwise Parser may be GC'ed (and deleted by the finalizer) while some Tree objects are still in use.
+	// Otherwise Parser may be GC'ed (and deleted by the finalizer) while some Tree
+	// objects are still in use.
 	p *Parser
 
-	// most probably better save node.id
+	// TODO: most probably better save node.id
 	cache map[C.TSNode]*Node
 }
 
@@ -45,8 +47,8 @@ type Range struct {
 	EndByte    uint32
 }
 
-// EditInput represents one edit in the input.
-type EditInput struct {
+// InputEdit represents one edit in the input.
+type InputEdit struct {
 	StartIndex  uint32
 	OldEndIndex uint32
 	NewEndIndex uint32
@@ -55,7 +57,7 @@ type EditInput struct {
 	NewEndPoint Point
 }
 
-func (i EditInput) c() *C.TSInputEdit {
+func (i InputEdit) c() *C.TSInputEdit {
 	return &C.TSInputEdit{
 		start_byte:   C.uint32_t(i.StartIndex),
 		old_end_byte: C.uint32_t(i.OldEndIndex),
@@ -98,11 +100,7 @@ func (t *Tree) Copy() *Tree {
 // As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
 // parser.Close() will be called by Go's garbage collector and users would not have to call this manually.
 func (t *BaseTree) Close() {
-	if !t.isClosed {
-		C.ts_tree_delete(t.c)
-	}
-
-	t.isClosed = true
+	t.Do(func() { C.ts_tree_delete(t.c) })
 }
 
 // RootNode returns root node of the syntax tree.
@@ -137,7 +135,7 @@ func (t *Tree) IncludedRanges() []Range {
 //
 // You MUST describe the edit both in terms of byte offsets and in terms of
 // (row, column) coordinates.
-func (t *Tree) Edit(i EditInput) {
+func (t *Tree) Edit(i InputEdit) {
 	C.ts_tree_edit(t.c, i.c())
 }
 

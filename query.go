@@ -9,13 +9,14 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"unsafe" //nolint:gocritic // ok
 )
 
 // Query API
 type Query struct {
-	c        *C.TSQuery
-	isClosed bool
+	c *C.TSQuery
+	sync.Once
 }
 
 // QueryCursor carries the state needed for processing the queries.
@@ -24,8 +25,7 @@ type QueryCursor struct {
 	t *Tree
 	// NOTE: Keep a pointer to the query to avoid garbage collection.
 	q *Query
-
-	isClosed bool
+	sync.Once
 }
 
 // QueryCapture is a captured node by a query with an index.
@@ -254,11 +254,7 @@ func QueryErrorTypeToString(errorType QueryErrorType) string {
 // As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
 // parser.Close() will be called by Go's garbage collector and users would not have to call this manually.
 func (q *Query) Close() {
-	if !q.isClosed {
-		C.ts_query_delete(q.c)
-	}
-
-	q.isClosed = true
+	q.Do(func() { C.ts_query_delete(q.c) })
 }
 
 // PatternCount returns the number of patterns in the query.
@@ -419,11 +415,7 @@ func NewQueryCursor() *QueryCursor {
 // As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
 // parser.Close() will be called by Go's garbage collector and users would not have to call this manually.
 func (qc *QueryCursor) Close() {
-	if !qc.isClosed {
-		C.ts_query_cursor_delete(qc.c)
-	}
-
-	qc.isClosed = true
+	qc.Do(func() { C.ts_query_cursor_delete(qc.c) })
 }
 
 // Exec executes the query on a given syntax node.

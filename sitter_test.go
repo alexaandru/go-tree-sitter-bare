@@ -138,7 +138,7 @@ func TestTree(t *testing.T) {
 	// change 2 -> (3 + 3)
 	newText := []byte("1 + (3 + 3)")
 
-	tree.Edit(EditInput{
+	tree.Edit(InputEdit{
 		StartIndex:  4,
 		OldEndIndex: 5,
 		NewEndIndex: 11,
