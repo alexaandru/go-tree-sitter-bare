@@ -3,11 +3,15 @@ package sitter
 // #include "sitter.h"
 import "C" //nolint:gocritic // ok
 
-import "unsafe" //nolint:gocritic // ok
+import (
+	"sync"
+	"unsafe" //nolint:gocritic // ok
+)
 
 // Language defines how to parse a particular programming language
 type Language struct {
-	ptr unsafe.Pointer
+	ptr  unsafe.Pointer
+	once sync.Once
 }
 
 // StateID is used for parser state ID.
@@ -24,7 +28,7 @@ func (l *Language) Copy() *Language {
 // Delete frees any dynamically-allocated resources for this language, if
 // this is the last reference.
 func (l *Language) Delete() {
-	C.ts_language_delete((*C.TSLanguage)(l.ptr))
+	l.once.Do(func() { C.ts_language_delete((*C.TSLanguage)(l.ptr)) })
 	l.ptr = nil
 	l = nil
 }

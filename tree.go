@@ -57,21 +57,12 @@ type InputEdit struct {
 
 func (i InputEdit) c() *C.TSInputEdit {
 	return &C.TSInputEdit{
-		start_byte:   C.uint32_t(i.StartIndex),
-		old_end_byte: C.uint32_t(i.OldEndIndex),
-		new_end_byte: C.uint32_t(i.NewEndIndex),
-		start_point: C.TSPoint{
-			row:    C.uint32_t(i.StartPoint.Row),
-			column: C.uint32_t(i.StartPoint.Column),
-		},
-		old_end_point: C.TSPoint{
-			row:    C.uint32_t(i.OldEndPoint.Row),
-			column: C.uint32_t(i.OldEndPoint.Column),
-		},
-		new_end_point: C.TSPoint{
-			row:    C.uint32_t(i.OldEndPoint.Row),
-			column: C.uint32_t(i.OldEndPoint.Column),
-		},
+		start_byte:    C.uint32_t(i.StartIndex),
+		old_end_byte:  C.uint32_t(i.OldEndIndex),
+		new_end_byte:  C.uint32_t(i.NewEndIndex),
+		start_point:   mkCPoint(i.StartPoint),
+		old_end_point: mkCPoint(i.OldEndPoint),
+		new_end_point: mkCPoint(i.NewEndPoint),
 	}
 }
 
@@ -122,8 +113,11 @@ func (t *Tree) Language() *Language {
 }
 
 // IncludedRanges returns the array of included ranges that was used to parse the syntax tree.
+//
+// The returned pointer must be freed by the caller.
 func (t *Tree) IncludedRanges() []Range {
 	count := C.uint32_t(0)
+	// FIXME: Free this!
 	p := C.ts_tree_included_ranges(t.c, &count)
 
 	return mkRanges(p, count)
@@ -152,6 +146,7 @@ func (t *Tree) Edit(i InputEdit) {
 // given `length` pointer.
 func (t *Tree) GetChangedRanges(other *Tree) []Range {
 	count := C.uint32_t(0)
+	// FIXME: Free this!
 	p := C.ts_tree_get_changed_ranges(t.c, other.c, &count)
 
 	return mkRanges(p, count)

@@ -67,6 +67,7 @@ func (c *TreeCursor) CurrentNode() *Node {
 // CurrentFieldName gets the field name of the tree cursor's current node.
 //
 // This returns empty string if the current node doesn't have a field.
+// See also `ts_node_child_by_field_name`.
 func (c *TreeCursor) CurrentFieldName() string {
 	return C.GoString(C.ts_tree_cursor_current_field_name(c.c))
 }
@@ -74,7 +75,7 @@ func (c *TreeCursor) CurrentFieldName() string {
 // CurrentFieldID returns the field id of the tree cursor's current node.
 //
 // This returns zero if the current node doesn't have a field.
-// See also [`ts_node_child_by_field_id`], [`ts_language_field_id_for_name`].
+// See also `ts_node_child_by_field_id`, `ts_language_field_id_for_name`.
 func (c *TreeCursor) CurrentFieldID() FieldID {
 	return C.ts_tree_cursor_current_field_id(c.c)
 }
@@ -101,7 +102,7 @@ func (c *TreeCursor) GoToNextSibling() bool {
 // there was no previous sibling node.
 //
 // Note, that this function may be slower than
-// [`ts_tree_cursor_goto_next_sibling`] due to how node positions are stored. In
+// `ts_tree_cursor_goto_next_sibling` due to how node positions are stored. In
 // the worst case, this will need to iterate through all the children upto the
 // previous sibling node to recalculate its position.
 func (c *TreeCursor) GotoPreviousSibling() bool {
@@ -162,9 +163,7 @@ func (c *TreeCursor) GoToFirstChildForByte(b uint32) int64 {
 // This returns the index of the child node if one was found, and returns -1
 // if no such child was found.
 func (c *TreeCursor) GoToFirstChildForPoint(p Point) int64 {
-	return int64(C.ts_tree_cursor_goto_first_child_for_point(c.c, C.TSPoint{
-		row: C.uint32_t(p.Row), column: C.uint32_t(p.Column),
-	}))
+	return int64(C.ts_tree_cursor_goto_first_child_for_point(c.c, mkCPoint(p)))
 }
 
 // Copy returns a copy of the tree cursor.

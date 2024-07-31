@@ -453,17 +453,8 @@ func (qc *QueryCursor) SetByteRange(start, end uint32) {
 }
 
 // SetPointRange sets the range of row/column positions in which the query will be executed.
-func (qc *QueryCursor) SetPointRange(startPoint, endPoint Point) {
-	cStartPoint := C.TSPoint{
-		row:    C.uint32_t(startPoint.Row),
-		column: C.uint32_t(startPoint.Column),
-	}
-	cEndPoint := C.TSPoint{
-		row:    C.uint32_t(endPoint.Row),
-		column: C.uint32_t(endPoint.Column),
-	}
-
-	C.ts_query_cursor_set_point_range(qc.c, cStartPoint, cEndPoint)
+func (qc *QueryCursor) SetPointRange(start, end Point) {
+	C.ts_query_cursor_set_point_range(qc.c, mkCPoint(start), mkCPoint(end))
 }
 
 // NextMatch iterates over matches.

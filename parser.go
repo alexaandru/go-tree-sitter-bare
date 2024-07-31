@@ -190,6 +190,7 @@ func (p *Parser) Parse(ctx context.Context, oldTree *Tree, input Input) (*Tree, 
 //
 // Uses the parser to parse some source code stored in one contiguous buffer.
 // If the optional encoding is passed, it will be used for parsing.
+// See `Parse()` for further details, as the behavior virtually the same.
 func (p *Parser) ParseString(ctx context.Context, oldTree *Tree, content []byte, opts ...InputEncoding) (*Tree, error) {
 	var baseTree *C.TSTree
 
@@ -239,6 +240,9 @@ func (p *Parser) Reset() {
 
 // SetTimeoutMicros limits the maximum duration in microseconds that parsing should
 // be allowed to take before halting.
+//
+// If parsing takes longer than this, it will halt early, returning NULL.
+// See `ts_parser_parse` for more information.
 func (p *Parser) SetTimeoutMicros(limit int) {
 	C.ts_parser_set_timeout_micros(p.c, C.uint64_t(limit))
 }
@@ -259,7 +263,6 @@ func (p *Parser) SetCancellationFlag(flag *uint64) {
 }
 
 // CancellationFlag returns the parser's current cancellation flag pointer.
-// const size_t *ts_parser_cancellation_flag(const TSParser *self);
 func (p *Parser) CancellationFlag() *uint64 {
 	// return (*uint64)(unsafe.Pointer(C.ts_parser_cancellation_flag(p.c)))
 	return p.cancel
@@ -272,6 +275,14 @@ func (p *Parser) Debug() {
 }
 
 /** TODO
+ * Set the logger that a parser should use during parsing.
+ *
+ * The parser does not take ownership over the logger payload. If a logger was
+ * previously assigned, the caller is responsible for releasing any memory
+ * owned by the previous logger.
+ /
+void ts_parser_set_logger(TSParser *self, TSLogger logger);
+
  * Get the parser's current logger.
 TSLogger ts_parser_logger(const TSParser *self);
 */
@@ -346,12 +357,9 @@ func (m *readFuncsMap) get(id int) ReadFunc {
 }
 
 //export callReadFunc
-func callReadFunc(id C.int, byteIndex C.uint32_t, position C.TSPoint, bytesRead *C.uint32_t) *C.char {
+func callReadFunc(id C.int, byteIndex C.uint32_t, pos C.TSPoint, bytesRead *C.uint32_t) *C.char {
 	readFunc := readFuncs.get(int(id))
-	content := readFunc(uint32(byteIndex), Point{
-		Row:    uint32(position.row),
-		Column: uint32(position.column),
-	})
+	content := readFunc(uint32(byteIndex), mkPoint(pos))
 	*bytesRead = C.uint32_t(len(content))
 
 	// Note: This memory is freed inside the C code; see sitter.c

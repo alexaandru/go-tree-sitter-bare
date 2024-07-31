@@ -33,12 +33,12 @@ func (t Symbol) String() string {
 	return symbolTypeNames[t]
 }
 
-// Type returns the node's type as a string.
+// Type returns the node's type.
 func (n Node) Type() string {
 	return C.GoString(C.ts_node_type(n.c))
 }
 
-// Symbol returns the node's type as a Symbol.
+// Symbol returns the node's type.
 func (n Node) Symbol() Symbol {
 	return C.ts_node_symbol(n.c)
 }
@@ -87,6 +87,9 @@ func (n Node) EndPoint() Point {
 }
 
 // String returns an S-expression representing the node as a string.
+//
+// This string is allocated with `malloc` and the caller is responsible for
+// freeing it using `free`.
 func (n Node) String() string {
 	p := C.ts_node_string(n.c)
 	defer C.free(unsafe.Pointer(p))
@@ -95,11 +98,15 @@ func (n Node) String() string {
 }
 
 // IsNull checks if the node is null.
+//
+// Functions like `ts_node_child` and `ts_node_next_sibling` will return a null
+// node to indicate that no such node was found.
 func (n Node) IsNull() bool {
 	return bool(C.ts_node_is_null(n.c))
 }
 
 // IsNamed checks if the node is *named*.
+//
 // Named nodes correspond to named rules in the grammar,
 // whereas *anonymous* nodes correspond to string literals in the grammar.
 func (n Node) IsNamed() bool {
@@ -107,13 +114,17 @@ func (n Node) IsNamed() bool {
 }
 
 // IsMissing checks if the node is *missing*.
-// Missing nodes are inserted by the parser in order to recover from certain kinds of syntax errors.
+//
+// Missing nodes are inserted by the parser in order to recover from certain
+// kinds of syntax errors.
 func (n Node) IsMissing() bool {
 	return bool(C.ts_node_is_missing(n.c))
 }
 
 // IsExtra checks if the node is *extra*.
-// Extra nodes represent things like comments, which are not required the grammar, but can appear anywhere.
+//
+// Extra nodes represent things like comments, which are not required the grammar,
+// but can appear anywhere.
 func (n Node) IsExtra() bool {
 	return bool(C.ts_node_is_extra(n.c))
 }
@@ -129,7 +140,9 @@ func (n Node) HasError() bool {
 }
 
 // IsError checks if the node is a syntax error.
-// Syntax errors represent parts of the code that could not be incorporated into a valid syntax tree.
+//
+// Syntax errors represent parts of the code that could not be incorporated
+// into a valid syntax tree.
 func (n Node) IsError() bool {
 	return bool(C.ts_node_is_error(n.c))
 }
@@ -145,6 +158,9 @@ func (n Node) NextParseState() StateID {
 }
 
 // Parent returns the node's immediate parent.
+//
+// Prefer `ts_node_child_containing_descendant` for
+// iterating over the node's ancestors.
 func (n Node) Parent() *Node {
 	nn := C.ts_node_parent(n.c)
 	return n.t.cachedNode(nn)
@@ -156,13 +172,15 @@ func (n Node) ChildContainingDescendant(d *Node) *Node {
 	return n.t.cachedNode(nn)
 }
 
-// Child returns the node's child at the given index, where zero represents the first child.
+// Child returns the node's child at the given index, where zero represents the
+// first child.
 func (n Node) Child(idx uint32) *Node {
 	nn := C.ts_node_child(n.c, C.uint32_t(idx))
 	return n.t.cachedNode(nn)
 }
 
-// FieldNameForChild returns the field name of the child at the given index, or "" if not named.
+// FieldNameForChild returns the field name of the child at the given index,
+// or "" if not named.
 func (n Node) FieldNameForChild(idx int) string {
 	return C.GoString(C.ts_node_field_name_for_child(n.c, C.uint32_t(idx)))
 }
@@ -173,12 +191,16 @@ func (n Node) ChildCount() uint32 {
 }
 
 // NamedChild returns the node's *named* child at the given index.
+//
+// See also `ts_node_is_named`.
 func (n Node) NamedChild(idx uint32) *Node {
 	nn := C.ts_node_named_child(n.c, C.uint32_t(idx))
 	return n.t.cachedNode(nn)
 }
 
 // NamedChildCount returns the node's number of *named* children.
+//
+// See also `ts_node_is_named`.
 func (n Node) NamedChildCount() uint32 {
 	return uint32(C.ts_node_named_child_count(n.c))
 }
@@ -256,10 +278,7 @@ func (n Node) DescendantForByteRange(start, end uint32) *Node {
 // DescendantForPointRange returns the smallest node within this node that spans
 // the given range of {row, column} positions.
 func (n Node) DescendantForPointRange(start, end Point) *Node {
-	nn := C.ts_node_descendant_for_point_range(n.c,
-		C.TSPoint{row: C.uint32_t(start.Row), column: C.uint32_t(start.Column)},
-		C.TSPoint{row: C.uint32_t(end.Row), column: C.uint32_t(end.Column)}) //nolint:nlreturn // false positive
-
+	nn := C.ts_node_descendant_for_point_range(n.c, mkCPoint(start), mkCPoint(end))
 	return n.t.cachedNode(nn)
 }
 
@@ -273,10 +292,7 @@ func (n Node) NamedDescendantForByteRange(start, end uint32) *Node {
 // NamedDescendantForPointRange returns the smallest named node within this node
 // that spans the given range of row/column positions.
 func (n Node) NamedDescendantForPointRange(start, end Point) *Node {
-	cStart := C.TSPoint{row: C.uint32_t(start.Row), column: C.uint32_t(start.Column)}
-	cEnd := C.TSPoint{row: C.uint32_t(end.Row), column: C.uint32_t(end.Column)}
-	nn := C.ts_node_named_descendant_for_point_range(n.c, cStart, cEnd)
-
+	nn := C.ts_node_named_descendant_for_point_range(n.c, mkCPoint(start), mkCPoint(end))
 	return n.t.cachedNode(nn)
 }
 

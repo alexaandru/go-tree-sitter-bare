@@ -8,14 +8,20 @@ import (
 	"unsafe" //nolint:gocritic // ok
 )
 
+//nolint:revive,stylecheck // ok
+const (
+	TREE_SITTER_LANGUAGE_VERSION                = C.TREE_SITTER_LANGUAGE_VERSION
+	TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION = C.TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION
+)
+
 // Parse is a shortcut for parsing bytes of source code, returns root node.
-func Parse(ctx context.Context, content []byte, lang *Language) (*Node, error) {
+func Parse(ctx context.Context, content []byte, lang *Language) (n *Node, err error) {
 	p := NewParser()
 	p.SetLanguage(lang)
 
 	tree, err := p.ParseString(ctx, nil, content)
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	return tree.RootNode(), nil
@@ -24,8 +30,8 @@ func Parse(ctx context.Context, content []byte, lang *Language) (*Node, error) {
 // mkRange constructs a Range from a C TSRange.
 func mkRange(r C.TSRange) Range {
 	return Range{
-		StartPoint: Point{Row: uint32(r.start_point.row), Column: uint32(r.start_point.column)},
-		EndPoint:   Point{Row: uint32(r.end_point.row), Column: uint32(r.end_point.column)},
+		StartPoint: mkPoint(r.start_point),
+		EndPoint:   mkPoint(r.end_point),
 		StartByte:  uint32(r.start_byte),
 		EndByte:    uint32(r.end_byte),
 	}
@@ -34,17 +40,13 @@ func mkRange(r C.TSRange) Range {
 // mkCRange constructs a C TSRange from a Range.
 func mkCRange(r Range) C.TSRange {
 	return C.TSRange{
-		start_point: C.TSPoint{row: C.uint32_t(r.StartPoint.Row), column: C.uint32_t(r.StartPoint.Column)},
-		end_point:   C.TSPoint{row: C.uint32_t(r.EndPoint.Row), column: C.uint32_t(r.EndPoint.Column)},
+		start_point: mkCPoint(r.StartPoint),
+		end_point:   mkCPoint(r.EndPoint),
 		start_byte:  C.uint32_t(r.StartByte),
 		end_byte:    C.uint32_t(r.EndByte),
 	}
 }
 
-// FIXME: When (and how) to free memory for the C array?
-// The returned Go slice is backed by the C array. So the
-// C array should be freed when the Go slice is GC'ed:
-// need to use runtime.SetFinalizer() "somehow" (TBD).
 func mkRanges(p *C.TSRange, count C.uint32_t) (out []Range) {
 	out = make([]Range, count)
 
@@ -55,10 +57,18 @@ func mkRanges(p *C.TSRange, count C.uint32_t) (out []Range) {
 	return
 }
 
+func mkPoint(p C.TSPoint) Point {
+	return Point{Row: uint32(p.row), Column: uint32(p.column)}
+}
+
+func mkCPoint(p Point) C.TSPoint {
+	return C.TSPoint{row: C.uint32_t(p.Row), column: C.uint32_t(p.Column)}
+}
+
 func newLanguage[T any, P *T](ptr P) (l *Language) {
 	if ptr == nil {
 		return
 	}
 
-	return &Language{unsafe.Pointer(ptr)}
+	return &Language{ptr: unsafe.Pointer(ptr)}
 }
