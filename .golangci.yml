@@ -46,10 +46,7 @@ linters-settings:
       - experimental
       - opinionated
     disabled-checks:
-      - commentFormatting
-      - exposedSyncMutex
-      # tmp below:
-      - commentedOutCode
+      - commentedOutCode # TODO
     settings:
       captLocal:
         paramsOnly: false
@@ -75,10 +72,6 @@ linters-settings:
     min-occurrences: 5
   godot:
     scope: all # comments to be checked: `declarations`, `toplevel`, or `all`
-    capital: true
-    exclude:
-      - "^fixme:"
-      - "^todo:"
   gofmt:
     simplify: true
   gosec:
@@ -108,10 +101,6 @@ linters-settings:
   predeclared:
     ignore: ""
     q: false
-  revive:
-    rules:
-      - name: exported
-        disabled: false
   nlreturn:
     block-size: 2
   nolintlint:

@@ -738,9 +738,7 @@ func TestParseInput(t *testing.T) {
 	// empty input
 	input := Input{
 		Encoding: InputEncodingUTF8,
-		Read: func(offset uint32, position Point) []byte {
-			return nil
-		},
+		Read:     func(_ uint32, _ Point) []byte { return nil },
 	}
 
 	tree, err := parser.ParseInputCtx(context.Background(), nil, input)
@@ -758,7 +756,7 @@ func TestParseInput(t *testing.T) {
 	// return all data in one go
 	readTimes := 0
 	inputData := []byte("12345 + 23456")
-	input.Read = func(offset uint32, position Point) []byte {
+	input.Read = func(_ uint32, _ Point) []byte {
 		if readTimes > 0 {
 			return nil
 		}
@@ -784,7 +782,7 @@ func TestParseInput(t *testing.T) {
 	}
 
 	// return all data in multiple sequantial reads
-	input.Read = func(offset uint32, position Point) []byte {
+	input.Read = func(offset uint32, _ Point) []byte {
 		if int(offset) >= len(inputData) {
 			return nil
 		}
@@ -824,7 +822,7 @@ func TestLeakParseInput(t *testing.T) {
 	inputData := []byte("1 + 2")
 	input := Input{
 		Encoding: InputEncodingUTF8,
-		Read: func(offset uint32, position Point) []byte {
+		Read: func(offset uint32, _ Point) []byte {
 			if offset > 0 {
 				return nil
 			}
@@ -967,7 +965,7 @@ func BenchmarkParseInput(b *testing.B) {
 	inputData := []byte("1 + 2")
 	input := Input{
 		Encoding: InputEncodingUTF8,
-		Read: func(offset uint32, position Point) []byte {
+		Read: func(offset uint32, _ Point) []byte {
 			if offset > 0 {
 				return nil
 			}
