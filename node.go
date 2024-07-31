@@ -16,12 +16,9 @@ type Node struct {
 // Symbol indicates the type of symbol.
 type Symbol = C.TSSymbol
 
-// SymbolType is the corresponding Go type for Symbol.
-type SymbolType int
-
 // Possible symbol types.
 const (
-	SymbolTypeRegular SymbolType = iota
+	SymbolTypeRegular Symbol = iota
 	SymbolTypeAnonymous
 	SymbolTypeAuxiliary
 )
@@ -32,7 +29,7 @@ var symbolTypeNames = []string{
 	"Auxiliary",
 }
 
-func (t SymbolType) String() string {
+func (t Symbol) String() string {
 	return symbolTypeNames[t]
 }
 
@@ -47,8 +44,8 @@ func (n Node) Symbol() Symbol {
 }
 
 // Language returns the node's language.
-func (n Node) Language() Language {
-	return Language{ptr: unsafe.Pointer(C.ts_node_language(n.c))}
+func (n Node) Language() *Language {
+	return newLanguage(C.ts_node_language(n.c))
 }
 
 // GrammarType returns the node's type as it appears in the grammar,

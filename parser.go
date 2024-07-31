@@ -17,18 +17,28 @@ import (
 type Parser struct {
 	c      *C.TSParser
 	cancel *uint64
-	sync.Once
+	once   sync.Once
 }
 
-// Input defines parameters for parse method.
+// Input type lets you specify how to read the text.
 type Input struct {
-	// TODO: void *payload; - what is it?
-	Read     ReadFunc
+	// Payload an arbitrary pointer that will be passed to each invocation
+	// of the Read function. (TODO: but will it though? In Go too?)
+	Payload unsafe.Pointer
+	//  Read is a function to retrieve a chunk of text at a given byte offset
+	//  and (row, column) position. The function should return a pointer to the
+	//  text and write its length to the [`bytes_read`] pointer. The parser does
+	//  not take ownership of this buffer; it just borrows it until it has
+	//  finished reading it. The function should write a zero value to the
+	//  [`bytes_read`] pointer to indicate the end of the document.
+	Read ReadFunc
+	// Encoding is an indication of how the text is encoded.
+	// Either `TSInputEncodingUTF8` or `TSInputEncodingUTF16`.
 	Encoding InputEncoding
 }
 
 // InputEncoding indicates the encoding of the text to parse.
-type InputEncoding int
+type InputEncoding = C.TSInputEncoding
 
 // ReadFunc is a function to retrieve a chunk of text at a given byte offset and
 // (row, column) position. It should return nil to indicate the end of the document.
@@ -72,17 +82,12 @@ func NewParser() (p *Parser) {
 // As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
 // parser.close() will be called by Go's garbage collector and users need not call this manually.
 func (p *Parser) close() {
-	p.Do(func() { C.ts_parser_delete(p.c) })
+	p.once.Do(func() { C.ts_parser_delete(p.c) })
 }
 
 // Language returns the parser's current language, if set.
 func (p *Parser) Language() (_ *Language) {
-	lp := C.ts_parser_language(p.c)
-	if lp == nil {
-		return
-	}
-
-	return &Language{ptr: unsafe.Pointer(lp)}
+	return newLanguage(C.ts_parser_language(p.c))
 }
 
 // SetLanguage sets the language that the parser should use for parsing.
@@ -138,66 +143,54 @@ func (p *Parser) IncludedRanges() (out []Range) {
 	return mkRanges(pp, count)
 }
 
-/** TODO
- * Use the parser to parse some source code and create a syntax tree.
- *
- * If you are parsing this document for the first time, pass `NULL` for the
- * `old_tree` parameter. Otherwise, if you have already parsed an earlier
- * version of this document and the document has since been edited, pass the
- * previous syntax tree so that the unchanged parts of it can be reused.
- * This will save time and memory. For this to work correctly, you must have
- * already edited the old syntax tree using the [`ts_tree_edit`] function in a
- * way that exactly matches the source code changes.
- *
- * The [`TSInput`] parameter lets you specify how to read the text. It has the
- * following three fields:
- * 1. [`read`]: A function to retrieve a chunk of text at a given byte offset
- *    and (row, column) position. The function should return a pointer to the
- *    text and write its length to the [`bytes_read`] pointer. The parser does
- *    not take ownership of this buffer; it just borrows it until it has
- *    finished reading it. The function should write a zero value to the
- *    [`bytes_read`] pointer to indicate the end of the document.
- * 2. [`payload`]: An arbitrary pointer that will be passed to each invocation
- *    of the [`read`] function.
- * 3. [`encoding`]: An indication of how the text is encoded. Either
- *    `TSInputEncodingUTF8` or `TSInputEncodingUTF16`.
- *
- * This function returns a syntax tree on success, and `NULL` on failure. There
- * are three possible reasons for failure:
- * 1. The parser does not have a language assigned. Check for this using the
-      [`ts_parser_language`] function.
- * 2. Parsing was cancelled due to a timeout that was set by an earlier call to
- *    the [`ts_parser_set_timeout_micros`] function. You can resume parsing from
- *    where the parser left out by calling [`ts_parser_parse`] again with the
- *    same arguments. Or you can start parsing from scratch by first calling
- *    [`ts_parser_reset`].
- * 3. Parsing was cancelled using a cancellation flag that was set by an
- *    earlier call to [`ts_parser_set_cancellation_flag`]. You can resume parsing
- *    from where the parser left out by calling [`ts_parser_parse`] again with
- *    the same arguments.
- *
- * [`read`]: TSInput::read
- * [`payload`]: TSInput::payload
- * [`encoding`]: TSInput::encoding
- * [`bytes_read`]: TSInput::read
-TSTree *ts_parser_parse(
-  TSParser *self,
-  const TSTree *old_tree,
-  TSInput input
-);
-*/
-
-// Parse produces new Tree from content (optionally using old tree).
+// Parse produces new Tree by reading from a callback defined in input
+// it is useful if your data is stored in specialized data structure
+// as it will avoid copying the data into []bytes and faster access
+// to edited part of the data.
 //
-// Deprecated: use ParseCtx instead.
-func (p *Parser) Parse(oldTree *Tree, content []byte) (*Tree, error) {
-	return p.ParseCtx(context.Background(), oldTree, content)
+// If you are parsing this document for the first time, pass `NULL` for the
+// `old_tree` parameter. Otherwise, if you have already parsed an earlier
+// version of this document and the document has since been edited, pass the
+// previous syntax tree so that the unchanged parts of it can be reused.
+// This will save time and memory. For this to work correctly, you must have
+// already edited the old syntax tree using the [`ts_tree_edit`] function in a
+// way that exactly matches the source code changes.
+//
+// See Input for details about it.
+//
+// This function returns a syntax tree on success, and `NULL` on failure. There
+// are three possible reasons for failure:
+//  1. The parser does not have a language assigned. Check for this using the
+//     [`ts_parser_language`] function.
+//  2. Parsing was cancelled due to a timeout that was set by an earlier call to
+//     the [`ts_parser_set_timeout_micros`] function. You can resume parsing from
+//     where the parser left out by calling [`ts_parser_parse`] again with the
+//     same arguments. Or you can start parsing from scratch by first calling
+//     [`ts_parser_reset`].
+//  3. Parsing was cancelled using a cancellation flag that was set by an
+//     earlier call to [`ts_parser_set_cancellation_flag`]. You can resume parsing
+//     from where the parser left out by calling [`ts_parser_parse`] again with
+//     the same arguments.
+func (p *Parser) Parse(ctx context.Context, oldTree *Tree, input Input) (*Tree, error) {
+	var baseTree *C.TSTree
+
+	if oldTree != nil {
+		baseTree = oldTree.c
+	}
+
+	funcID := readFuncs.register(input.Read)
+	baseTree = C.call_ts_parser_parse(p.c, baseTree, C.int(funcID), input.Encoding)
+
+	readFuncs.unregister(funcID)
+
+	return p.convertTSTree(ctx, baseTree)
 }
 
-// ParseCtx produces new Tree from content (optionally using old tree).
+// ParseString produces new Tree from content (optionally using old tree).
 //
 // Uses the parser to parse some source code stored in one contiguous buffer.
-func (p *Parser) ParseCtx(ctx context.Context, oldTree *Tree, content []byte) (*Tree, error) {
+// If the optional encoding is passed, it will be used for parsing.
+func (p *Parser) ParseString(ctx context.Context, oldTree *Tree, content []byte, opts ...InputEncoding) (*Tree, error) {
 	var baseTree *C.TSTree
 
 	if oldTree != nil {
@@ -219,54 +212,16 @@ func (p *Parser) ParseCtx(ctx context.Context, oldTree *Tree, content []byte) (*
 	}
 
 	input := C.CBytes(content)
-	baseTree = C.ts_parser_parse_string(p.c, baseTree, (*C.char)(input), C.uint32_t(len(content)))
+
+	if len(opts) > 0 {
+		baseTree = C.ts_parser_parse_string_encoding(p.c, baseTree, (*C.char)(input), C.uint32_t(len(content)), opts[0])
+	} else {
+		baseTree = C.ts_parser_parse_string(p.c, baseTree, (*C.char)(input), C.uint32_t(len(content)))
+	}
 
 	close(parseComplete)
 
 	C.free(input)
-
-	return p.convertTSTree(ctx, baseTree)
-}
-
-/** TODO
- * Use the parser to parse some source code stored in one contiguous buffer with
- * a given encoding. The first four parameters work the same as in the
- * [`ts_parser_parse_string`] method above. The final parameter indicates whether
- * the text is encoded as UTF8 or UTF16.
-TSTree *ts_parser_parse_string_encoding(
-  TSParser *self,
-  const TSTree *old_tree,
-  const char *string,
-  uint32_t length,
-  TSInputEncoding encoding
-);
-*/
-
-// ParseInput produces new Tree by reading from a callback defined in input
-// it is useful if your data is stored in specialized data structure
-// as it will avoid copying the data into []bytes
-// and faster access to edited part of the data
-//
-// Deprecated: use ParseInputCtx instead.
-func (p *Parser) ParseInput(oldTree *Tree, input Input) (*Tree, error) {
-	return p.ParseInputCtx(context.Background(), oldTree, input)
-}
-
-// ParseInputCtx produces new Tree by reading from a callback defined in input
-// it is useful if your data is stored in specialized data structure
-// as it will avoid copying the data into []bytes
-// and faster access to edited part of the data
-func (p *Parser) ParseInputCtx(ctx context.Context, oldTree *Tree, input Input) (*Tree, error) {
-	var baseTree *C.TSTree
-
-	if oldTree != nil {
-		baseTree = oldTree.c
-	}
-
-	funcID := readFuncs.register(input.Read)
-	baseTree = C.call_ts_parser_parse(p.c, baseTree, C.int(funcID), C.TSInputEncoding(input.Encoding))
-
-	readFuncs.unregister(funcID)
 
 	return p.convertTSTree(ctx, baseTree)
 }

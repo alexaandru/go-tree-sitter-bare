@@ -1,21 +1,20 @@
 package sitter
 
 // #include "sitter.h"
-import "C" //nolint:gocritic // ok
+import "C"
 
 import (
 	"os"
 	"runtime"
 	"sync"
-	"unsafe" //nolint:gocritic // ok
 )
 
 // BaseTree is needed as we use cache for nodes on normal tree object.
 // It prevent run of SetFinalizer as it introduces cycle we can workaround it using
 // separate object for details see: https://github.com/golang/go/issues/7358#issuecomment-66091558
 type BaseTree struct {
-	c *C.TSTree
-	sync.Once
+	c    *C.TSTree
+	once sync.Once
 }
 
 // Tree represents the syntax tree of an entire source code file
@@ -99,7 +98,7 @@ func (t *Tree) Copy() *Tree {
 // As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
 // parser.close() will be called by Go's garbage collector and users need not call this manually.
 func (t *BaseTree) close() {
-	t.Do(func() { C.ts_tree_delete(t.c) })
+	t.once.Do(func() { C.ts_tree_delete(t.c) })
 }
 
 // RootNode returns root node of the syntax tree.
@@ -118,8 +117,8 @@ func (t *Tree) RootNodeWithOffset(ofs uint32, extent Point) *Node {
 }
 
 // Language returns the language that was used to parse the syntax tree.
-func (t *Tree) Language() Language {
-	return Language{ptr: unsafe.Pointer(C.ts_tree_language(t.c))}
+func (t *Tree) Language() *Language {
+	return newLanguage(C.ts_tree_language(t.c))
 }
 
 // IncludedRanges returns the array of included ranges that was used to parse the syntax tree.

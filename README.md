@@ -59,7 +59,7 @@ Parse some code:
 
 ```go
 sourceCode := []byte("let a = 1")
-tree, _ := parser.ParseCtx(context.Background(), nil, sourceCode)
+tree, _ := parser.ParseString(context.Background(), nil, sourceCode)
 ```
 
 Inspect the syntax tree:
@@ -108,7 +108,7 @@ assert.False(n.Child(0).Child(0).HasChanges()) // left side of the tree didn't c
 assert.True(n.Child(0).Child(1).HasChanges())
 
 // generate new tree
-newTree := parser.Parse(tree, newText)
+newTree, _ := parser.ParseString(context.TODO(), tree, newText)
 ```
 
 ### Predicates
@@ -137,7 +137,7 @@ func main() {
 
 	// Parse source code
 	lang := javascript.GetLanguage()
-	n, _ := sitter.ParseCtx(context.Background(), sourceCode, lang)
+	n, _ := sitter.Parse(context.Background(), sourceCode, lang)
 	// Execute the query
 	q, _ := sitter.NewQuery([]byte(screamingSnakeCasePattern), lang)
 	qc := sitter.NewQueryCursor()

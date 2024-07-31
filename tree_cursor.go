@@ -15,7 +15,7 @@ type TreeCursor struct {
 	c       *C.TSTreeCursor
 	t       *Tree
 	context [3]uint32 // TODO: How is this used upstream?
-	sync.Once
+	once    sync.Once
 }
 
 // NewTreeCursor creates a new tree cursor starting from the given node.
@@ -41,7 +41,7 @@ func NewTreeCursor(n *Node) *TreeCursor {
 // As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
 // parser.close() will be called by Go's garbage collector and users need not call this manually.
 func (c *TreeCursor) close() {
-	c.Do(func() { C.ts_tree_cursor_delete(c.c) })
+	c.once.Do(func() { C.ts_tree_cursor_delete(c.c) })
 }
 
 // Reset re-initializes a tree cursor to start at a different node.

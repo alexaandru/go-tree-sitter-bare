@@ -15,17 +15,16 @@ import (
 
 // Query API
 type Query struct {
-	c *C.TSQuery
-	sync.Once
+	c    *C.TSQuery
+	once sync.Once
 }
 
 // QueryCursor carries the state needed for processing the queries.
 type QueryCursor struct {
-	c *C.TSQueryCursor
-	t *Tree
-	// NOTE: Keep a pointer to the query to avoid garbage collection.
-	q *Query
-	sync.Once
+	c    *C.TSQueryCursor
+	t    *Tree
+	q    *Query // NOTE: Keep a pointer to it to avoid GC. TODO: Maybe use Pinner instead?
+	once sync.Once
 }
 
 // QueryCapture is a captured node by a query with an index.
@@ -41,24 +40,24 @@ type QueryMatch struct {
 	PatternIndex uint16
 }
 
-type QueryPredicateStepType int //nolint:revive // TODO
+type QueryPredicateStepType = C.TSQueryPredicateStepType //nolint:revive // TODO
 
 type QueryPredicateStep struct { //nolint:revive // TODO
 	Type    QueryPredicateStepType
 	ValueID uint32
 }
 
-type Quantifier int //nolint:revive // TODO
+type Quantifier = C.TSQuantifier //nolint:revive // TODO
 
-// QueryErrorType indicates the type of QueryError.
-type QueryErrorType int
+// QueryError indicates the type of QueryError.
+type QueryError = C.TSQueryError
 
-// QueryError - if there is an error in the query,
+// DetailedQueryError - if there is an error in the query,
 // then the Offset argument will be set to the byte offset of the error,
 // and the Type argument will be set to a value that indicates the type of error.
-type QueryError struct {
+type DetailedQueryError struct {
 	Message string
-	Type    QueryErrorType
+	Type    QueryError
 	Offset  uint32
 }
 
@@ -80,7 +79,7 @@ const (
 
 // Error types.
 const (
-	QueryErrorNone QueryErrorType = iota
+	QueryErrorNone QueryError = iota
 	QueryErrorSyntax
 	QueryErrorNodeType
 	QueryErrorField
@@ -118,7 +117,7 @@ func NewQuery(pattern []byte, lang *Language) (*Query, error) { //nolint:funlen,
 
 	C.free(input)
 
-	if errtype != C.TSQueryError(QueryErrorNone) {
+	if errtype != QueryErrorNone {
 		errorOffset := uint32(erroff)
 		// search for the line containing the offset
 		line := 1
@@ -135,8 +134,7 @@ func NewQuery(pattern []byte, lang *Language) (*Query, error) { //nolint:funlen,
 		}
 
 		column := int(errorOffset) - lineStart
-		errorType := QueryErrorType(errtype)
-		errorTypeToString := QueryErrorTypeToString(errorType)
+		errorType := QueryError(errtype) //nolint:unconvert // needed for extra methods
 
 		var message string
 
@@ -150,10 +148,10 @@ func NewQuery(pattern []byte, lang *Language) (*Query, error) { //nolint:funlen,
 			m := identifierRegexp.FindStringSubmatch(s)
 			if len(m) > 0 {
 				message = fmt.Sprintf("invalid %s '%s' at line %d column %d",
-					errorTypeToString, m[0], line, column)
+					errorType, m[0], line, column)
 			} else {
 				message = fmt.Sprintf("invalid %s at line %d column %d",
-					errorTypeToString, line, column)
+					errorType, line, column)
 			}
 
 		// Errors the report position: QueryErrorSyntax, QueryErrorStructure, QueryErrorLanguage.
@@ -162,11 +160,10 @@ func NewQuery(pattern []byte, lang *Language) (*Query, error) { //nolint:funlen,
 			lines := strings.Split(s, "\n")
 			whitespace := strings.Repeat(" ", column)
 			message = fmt.Sprintf("invalid %s at line %d column %d\n%s\n%s^",
-				errorTypeToString, line, column,
-				lines[0], whitespace)
+				errorType, line, column, lines[0], whitespace)
 		}
 
-		return nil, &QueryError{
+		return nil, &DetailedQueryError{
 			Offset:  errorOffset,
 			Type:    errorType,
 			Message: message,
@@ -231,9 +228,8 @@ func NewQuery(pattern []byte, lang *Language) (*Query, error) { //nolint:funlen,
 	return q, nil
 }
 
-// QueryErrorTypeToString converts a query error to string.
-func QueryErrorTypeToString(errorType QueryErrorType) string {
-	switch errorType {
+func (err QueryError) String() string {
+	switch err {
 	case QueryErrorNone:
 		return "none"
 	case QueryErrorNodeType:
@@ -254,7 +250,7 @@ func QueryErrorTypeToString(errorType QueryErrorType) string {
 // As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
 // parser.close() will be called by Go's garbage collector and users need not call this manually.
 func (q *Query) close() {
-	q.Do(func() { C.ts_query_delete(q.c) })
+	q.once.Do(func() { C.ts_query_delete(q.c) })
 }
 
 // PatternCount returns the number of patterns in the query.
@@ -305,7 +301,7 @@ func (q *Query) PredicatesForPattern(patternIndex uint32) [][]QueryPredicateStep
 	cPredicateSteps := unsafe.Slice(cPredicateStep, int(length))
 
 	for _, s := range cPredicateSteps {
-		stepType := QueryPredicateStepType(s._type)
+		stepType := s._type
 		valueID := uint32(s.value_id)
 		predicateSteps = append(predicateSteps, QueryPredicateStep{stepType, valueID})
 	}
@@ -350,7 +346,7 @@ func (q *Query) CaptureNameForID(id uint32) string {
 // Each capture is associated with a numeric id based on the order that it
 // appeared in the query's source.
 func (q *Query) CaptureQuantifierForID(id, captureID uint32) Quantifier {
-	return Quantifier(C.ts_query_capture_quantifier_for_id(q.c, C.uint32_t(id), C.uint32_t(captureID)))
+	return C.ts_query_capture_quantifier_for_id(q.c, C.uint32_t(id), C.uint32_t(captureID))
 }
 
 // StringValueForID returns the string value associated with the given query id.
@@ -415,7 +411,7 @@ func NewQueryCursor() *QueryCursor {
 // As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
 // parser.close() will be called by Go's garbage collector and users need not call this manually.
 func (qc *QueryCursor) close() {
-	qc.Do(func() { C.ts_query_cursor_delete(qc.c) })
+	qc.once.Do(func() { C.ts_query_cursor_delete(qc.c) })
 }
 
 // Exec executes the query on a given syntax node.
@@ -648,7 +644,7 @@ func (qc *QueryCursor) FilterPredicates(m *QueryMatch, input []byte) *QueryMatch
 	return qm
 }
 
-func (qe *QueryError) Error() string {
+func (qe *DetailedQueryError) Error() string {
 	return qe.Message
 }
 

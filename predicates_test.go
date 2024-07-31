@@ -1,6 +1,9 @@
 package sitter
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
 
 func TestQueryWithPredicates(t *testing.T) {
 	t.Parallel()
@@ -356,7 +359,7 @@ func TestFilterPredicates(t *testing.T) {
 			parser := NewParser()
 			parser.SetLanguage(getTestGrammar())
 
-			tree, err := parser.Parse(nil, []byte(tc.input))
+			tree, err := parser.ParseString(context.TODO(), nil, []byte(tc.input))
 			if err != nil {
 				t.Fatal("Expected no error, got", err)
 			}

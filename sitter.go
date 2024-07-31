@@ -8,24 +8,12 @@ import (
 	"unsafe" //nolint:gocritic // ok
 )
 
-// NewLanguage creates new Language from c pointer.
-func NewLanguage(ptr unsafe.Pointer) *Language {
-	return &Language{ptr}
-}
-
 // Parse is a shortcut for parsing bytes of source code, returns root node.
-//
-// Deprecated: use ParseCtx instead.
-func Parse(content []byte, lang *Language) (*Node, error) {
-	return ParseCtx(context.Background(), content, lang)
-}
-
-// ParseCtx is a shortcut for parsing bytes of source code, returns root node.
-func ParseCtx(ctx context.Context, content []byte, lang *Language) (*Node, error) {
+func Parse(ctx context.Context, content []byte, lang *Language) (*Node, error) {
 	p := NewParser()
 	p.SetLanguage(lang)
 
-	tree, err := p.ParseCtx(ctx, nil, content)
+	tree, err := p.ParseString(ctx, nil, content)
 	if err != nil {
 		return nil, err
 	}
@@ -65,4 +53,12 @@ func mkRanges(p *C.TSRange, count C.uint32_t) (out []Range) {
 	}
 
 	return
+}
+
+func newLanguage[T any, P *T](ptr P) (l *Language) {
+	if ptr == nil {
+		return
+	}
+
+	return &Language{unsafe.Pointer(ptr)}
 }
