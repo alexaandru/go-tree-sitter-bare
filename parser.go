@@ -27,18 +27,16 @@ type Input struct {
 	Encoding InputEncoding
 }
 
-// InputEncoding is a encoding of the text to parse.
+// InputEncoding indicates the encoding of the text to parse.
 type InputEncoding int
 
-// ReadFunc is a function to retrieve a chunk of text at a given byte offset and (row, column) position
-// it should return nil to indicate the end of the document
+// ReadFunc is a function to retrieve a chunk of text at a given byte offset and
+// (row, column) position. It should return nil to indicate the end of the document.
 type ReadFunc func(offset uint32, position Point) []byte
 
 // keeps callbacks for parser.parse method
 type readFuncsMap struct {
 	funcs map[int]ReadFunc
-	count int
-
 	sync.Mutex
 }
 
@@ -375,14 +373,14 @@ func (p *Parser) convertTSTree(ctx context.Context, tsTree *C.TSTree) (*Tree, er
 	return p.newTree(tsTree), nil
 }
 
-func (m *readFuncsMap) register(f ReadFunc) int {
+func (m *readFuncsMap) register(f ReadFunc) (id int) {
 	m.Lock()
 	defer m.Unlock()
 
-	m.count++
-	m.funcs[m.count] = f
+	id = len(m.funcs)
+	m.funcs[id] = f
 
-	return m.count
+	return
 }
 
 func (m *readFuncsMap) unregister(id int) {
