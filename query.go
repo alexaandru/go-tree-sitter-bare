@@ -226,7 +226,7 @@ func NewQuery(pattern []byte, lang *Language) (*Query, error) { //nolint:funlen,
 		}
 	}
 
-	runtime.SetFinalizer(q, (*Query).Close)
+	runtime.SetFinalizer(q, (*Query).close)
 
 	return q, nil
 }
@@ -249,11 +249,11 @@ func QueryErrorTypeToString(errorType QueryErrorType) string {
 	}
 }
 
-// Close should be called to ensure that all the memory used by the query is freed.
+// close should be called to ensure that all the memory used by the query is freed.
 //
 // As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
-// parser.Close() will be called by Go's garbage collector and users would not have to call this manually.
-func (q *Query) Close() {
+// parser.close() will be called by Go's garbage collector and users need not call this manually.
+func (q *Query) close() {
 	q.Do(func() { C.ts_query_delete(q.c) })
 }
 
@@ -405,16 +405,16 @@ func (q *Query) DisablePattern(patIdx uint32) {
 func NewQueryCursor() *QueryCursor {
 	qc := &QueryCursor{c: C.ts_query_cursor_new(), t: nil}
 
-	runtime.SetFinalizer(qc, (*QueryCursor).Close)
+	runtime.SetFinalizer(qc, (*QueryCursor).close)
 
 	return qc
 }
 
-// Close should be called to ensure that all the memory used by the query cursor is freed.
+// close should be called to ensure that all the memory used by the query cursor is freed.
 //
 // As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
-// parser.Close() will be called by Go's garbage collector and users would not have to call this manually.
-func (qc *QueryCursor) Close() {
+// parser.close() will be called by Go's garbage collector and users need not call this manually.
+func (qc *QueryCursor) close() {
 	qc.Do(func() { C.ts_query_cursor_delete(qc.c) })
 }
 

@@ -81,7 +81,7 @@ func (i InputEdit) c() *C.TSInputEdit {
 func (p *Parser) newTree(c *C.TSTree) *Tree {
 	base := &BaseTree{c: c}
 
-	runtime.SetFinalizer(base, (*BaseTree).Close)
+	runtime.SetFinalizer(base, (*BaseTree).close)
 
 	return &Tree{p: p, BaseTree: base, cache: map[uintptr]*Node{}}
 }
@@ -94,11 +94,11 @@ func (t *Tree) Copy() *Tree {
 	return t.p.newTree(C.ts_tree_copy(t.c))
 }
 
-// Close should be called to ensure that all the memory used by the tree is freed.
+// close should be called to ensure that all the memory used by the tree is freed.
 //
 // As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
-// parser.Close() will be called by Go's garbage collector and users would not have to call this manually.
-func (t *BaseTree) Close() {
+// parser.close() will be called by Go's garbage collector and users need not call this manually.
+func (t *BaseTree) close() {
 	t.Do(func() { C.ts_tree_delete(t.c) })
 }
 
@@ -184,24 +184,6 @@ func (t *Tree) cachedNode(ptr C.TSNode) (n *Node) {
 
 	n = &Node{c: ptr, t: t}
 	t.cache[p] = n
-
-	return
-}
-
-func mkRanges(p *C.TSRange, count C.uint32_t) (out []Range) {
-	defer C.free(unsafe.Pointer(p))
-
-	ranges := unsafe.Slice(p, int(count))
-	out = make([]Range, count)
-
-	for i, r := range ranges {
-		out[i] = Range{
-			StartPoint: Point{Row: uint32(r.start_point.row), Column: uint32(r.start_point.column)},
-			EndPoint:   Point{Row: uint32(r.end_point.row), Column: uint32(r.end_point.column)},
-			StartByte:  uint32(r.start_byte),
-			EndByte:    uint32(r.end_byte),
-		}
-	}
 
 	return
 }

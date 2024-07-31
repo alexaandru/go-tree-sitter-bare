@@ -62,22 +62,27 @@ func NewParser() (p *Parser) {
 
 	p.SetCancellationFlag(&cancel)
 
-	runtime.SetFinalizer(p, (*Parser).Close)
+	runtime.SetFinalizer(p, (*Parser).close)
 
 	return
 }
 
-// Close should be called to ensure that all the memory used by the parse is freed.
+// close should be called to ensure that all the memory used by the parse is freed.
 //
 // As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
-// parser.Close() will be called by Go's garbage collector and users would not have to call this manually.
-func (p *Parser) Close() {
+// parser.close() will be called by Go's garbage collector and users need not call this manually.
+func (p *Parser) close() {
 	p.Do(func() { C.ts_parser_delete(p.c) })
 }
 
-// Language returns the parser's current language.
-func (p *Parser) Language() Language {
-	return Language{ptr: unsafe.Pointer(C.ts_parser_language(p.c))}
+// Language returns the parser's current language, if set.
+func (p *Parser) Language() (_ *Language) {
+	lp := C.ts_parser_language(p.c)
+	if lp == nil {
+		return
+	}
+
+	return &Language{ptr: unsafe.Pointer(lp)}
 }
 
 // SetLanguage sets the language that the parser should use for parsing.
@@ -115,20 +120,8 @@ func (p *Parser) SetLanguage(lang *Language) bool {
 // this function returns `true`.
 func (p *Parser) SetIncludedRanges(ranges []Range) bool {
 	cRanges := make([]C.TSRange, len(ranges))
-
 	for i, r := range ranges {
-		cRanges[i] = C.TSRange{
-			start_point: C.TSPoint{
-				row:    C.uint32_t(r.StartPoint.Row),
-				column: C.uint32_t(r.StartPoint.Column),
-			},
-			end_point: C.TSPoint{
-				row:    C.uint32_t(r.EndPoint.Row),
-				column: C.uint32_t(r.EndPoint.Column),
-			},
-			start_byte: C.uint32_t(r.StartByte),
-			end_byte:   C.uint32_t(r.EndByte),
-		}
+		cRanges[i] = mkCRange(r)
 	}
 
 	return bool(C.ts_parser_set_included_ranges(p.c, (*C.TSRange)(unsafe.Pointer(&cRanges[0])), C.uint(len(ranges))))
@@ -363,7 +356,7 @@ func (p *Parser) convertTSTree(ctx context.Context, tsTree *C.TSTree) (*Tree, er
 			return nil, ctx.Err()
 		}
 
-		if C.ts_parser_language(p.c) == nil {
+		if p.Language() == nil {
 			return nil, ErrNoLanguage
 		}
 
@@ -406,7 +399,7 @@ func callReadFunc(id C.int, byteIndex C.uint32_t, position C.TSPoint, bytesRead 
 	})
 	*bytesRead = C.uint32_t(len(content))
 
-	// Note: This memory is freed inside the C code; see bindings.c
+	// Note: This memory is freed inside the C code; see sitter.c
 	input := C.CBytes(content)
 
 	return (*C.char)(input)

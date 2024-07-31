@@ -30,17 +30,17 @@ func NewTreeCursor(n *Node) *TreeCursor {
 		t: n.t,
 	}
 
-	runtime.SetFinalizer(c, (*TreeCursor).Close)
+	runtime.SetFinalizer(c, (*TreeCursor).close)
 
 	return c
 }
 
-// Close should be called to ensure that all the memory used by the tree cursor
+// close should be called to ensure that all the memory used by the tree cursor
 // is freed.
 //
 // As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
-// parser.Close() will be called by Go's garbage collector and users would not have to call this manually.
-func (c *TreeCursor) Close() {
+// parser.close() will be called by Go's garbage collector and users need not call this manually.
+func (c *TreeCursor) close() {
 	c.Do(func() { C.ts_tree_cursor_delete(c.c) })
 }
 
