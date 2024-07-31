@@ -29,8 +29,7 @@ type Tree struct {
 	// objects are still in use.
 	p *Parser
 
-	// TODO: most probably better save node.id
-	cache map[C.TSNode]*Node
+	cache map[uintptr]*Node
 }
 
 // Point represents one location in the input.
@@ -84,7 +83,7 @@ func (p *Parser) newTree(c *C.TSTree) *Tree {
 
 	runtime.SetFinalizer(base, (*BaseTree).Close)
 
-	return &Tree{p: p, BaseTree: base, cache: map[C.TSNode]*Node{}}
+	return &Tree{p: p, BaseTree: base, cache: map[uintptr]*Node{}}
 }
 
 // Copy creates a shallow copy of the syntax tree. This is very fast.
@@ -171,19 +170,22 @@ func (t *Tree) PrintDotGraph(name string) (err error) {
 	return f.Close()
 }
 
-func (t *Tree) cachedNode(ptr C.TSNode) *Node {
+func (t *Tree) cachedNode(ptr C.TSNode) (n *Node) {
 	if ptr.id == nil {
-		return nil
+		return
 	}
 
-	if n, ok := t.cache[ptr]; ok {
-		return n
+	var ok bool
+
+	p := uintptr(ptr.id)
+	if n, ok = t.cache[p]; ok {
+		return
 	}
 
-	n := &Node{c: ptr, t: t}
-	t.cache[ptr] = n
+	n = &Node{c: ptr, t: t}
+	t.cache[p] = n
 
-	return n
+	return
 }
 
 func mkRanges(p *C.TSRange, count C.uint32_t) (out []Range) {
