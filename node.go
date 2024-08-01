@@ -1,8 +1,9 @@
 package sitter
 
 // #include "sitter.h"
-import "C"      //nolint:gocritic // ok
-import "unsafe" //nolint:gocritic // ok
+import "C"
+
+import "unsafe"
 
 // Node represents a single node in the syntax tree
 // It tracks its start and end positions in the source code,

@@ -1,11 +1,11 @@
 package sitter
 
 // #include "sitter.h"
-import "C" //nolint:gocritic // ok
+import "C"
 
 import (
 	"sync"
-	"unsafe" //nolint:gocritic // ok
+	"unsafe"
 )
 
 // Language defines how to parse a particular programming language

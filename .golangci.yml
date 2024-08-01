@@ -47,6 +47,7 @@ linters-settings:
       - opinionated
     disabled-checks:
       - commentedOutCode # TODO
+      - dupImport
     settings:
       captLocal:
         paramsOnly: false

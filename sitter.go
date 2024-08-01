@@ -1,11 +1,11 @@
 package sitter
 
 // #include "sitter.h"
-import "C" //nolint:gocritic // ok
+import "C"
 
 import (
 	"context"
-	"unsafe" //nolint:gocritic // ok
+	"unsafe"
 )
 
 //nolint:revive,stylecheck // ok

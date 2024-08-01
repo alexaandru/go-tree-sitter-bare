@@ -1,13 +1,13 @@
 package sitter
 
 // #include "sitter.h"
-import "C" //nolint:gocritic // ok
+import "C"
 
 import (
 	"os"
 	"runtime"
 	"sync"
-	"unsafe" //nolint:gocritic // ok
+	"unsafe"
 )
 
 // BaseTree is needed as we use cache for nodes on normal tree object.

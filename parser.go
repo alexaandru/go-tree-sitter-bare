@@ -1,7 +1,7 @@
-package sitter //nolint:gocritic // ok
+package sitter
 
 // #include "sitter.h"
-import "C" //nolint:gocritic // ok
+import "C"
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"sync"
 	"sync/atomic"
-	"unsafe" //nolint:gocritic // ok
+	"unsafe"
 )
 
 // Parser produces concrete syntax tree based on source code using Language.

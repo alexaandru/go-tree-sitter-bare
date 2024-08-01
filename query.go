@@ -1,7 +1,7 @@
-package sitter //nolint:gocritic // ok
+package sitter
 
 // #include "sitter.h"
-import "C" //nolint:gocritic // ok
+import "C"
 
 import (
 	"errors"
@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"unsafe" //nolint:gocritic // ok
+	"unsafe"
 )
 
 // Query is a tree query, compiled from a string of S-expressions. The query
