@@ -27,13 +27,35 @@ on sitter, when the actual code is less than 2MB.
 
 I copied the files from the root of `go-tree-sitter` plus my [PR](https://github.com/smacker/go-tree-sitter/pull/150),
 as it was at `1f283e24f56023537e6de2d542732445e505f901` commit.
-I kept the LICENSE and the README intact (except for this explanation of
-why this fork exists) so although there is no git history, being a brand new
+I kept the LICENSE so, although there is no git history, being a brand new
 repo and not a GitHub fork, everything points back to the original author.
 
 So there it is, full transparency and giving credit where is due. I generally
 dislike deleting history, but simple `git rm`ing parsers from a clone, would've
 still kept them in git history and contribute to the repo size.
+
+### Differences
+
+- timely kept up to date with `tree-sitter` updates (including new API calls);
+- tiny, zero deps repo;
+- implemented all API calls from [api.h](api.h) with the exception of lookahead
+  iterator (maybe adding that one later);
+- added an automated check (and corresponding github action) to quickly
+  check if we are falling behind [api.h](api.h);
+- reorganized code based on [api.h](api.h) sections and corresponding
+  files (i.e. broken down `bindings.go` into [language.go](language.go),
+  [parser.go](parser.go), [node.go](node.go), [query.go](query.go),
+  [tree.go](tree.go), [tree_cursor.go](tree_cursor.go) and [sitter.go](sitter.go),
+  with each file having the code sorted the same way as in `api.h`);
+- synced **Go** funcs' comments with their counterparts from `api.h`;
+- made all `Close()` methods private (as they are not supposed to be
+  called by end users) and replaced their `isBool` with a `sync.Once`;
+- some simplification related to types/params/etc. where it was possible;
+- added return types where they were missing (a few places, where the C
+  counterpart would return a bool but the Go wrapper wouldn't);
+- all tests run in parallel (so both faster and acting as an extra,
+  indirect check that concurrency works as expected);
+- code cleanup (enabled lots of linters and cleaned up code accordingly).
 
 ## Usage
 
@@ -84,21 +106,10 @@ If your source code changes, you can update the syntax tree. This will take less
 // change 1 -> true
 newText := []byte("let a = true")
 tree.Edit(sitter.EditInput{
-    StartIndex:  8,
-    OldEndIndex: 9,
-    NewEndIndex: 12,
-    StartPoint: sitter.Point{
-        Row:    0,
-        Column: 8,
-    },
-    OldEndPoint: sitter.Point{
-        Row:    0,
-        Column: 9,
-    },
-    NewEndPoint: sitter.Point{
-        Row:    0,
-        Column: 12,
-    },
+    StartIndex: 8, OldEndIndex: 9, NewEndIndex: 12,
+    StartPoint: sitter.Point{Row: 0, Column: 8},
+    OldEndPoint: sitter.Point{Row: 0, Column: 9},
+    NewEndPoint: sitter.Point{Row: 0, Column: 12},
 })
 
 // check that it changed tree

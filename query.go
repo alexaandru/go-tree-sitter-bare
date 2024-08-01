@@ -101,6 +101,24 @@ var (
 	ErrPredicateWrongType      = errors.New("predicate must be a")
 )
 
+//nolint:gochecknoglobals // ok
+var (
+	humanErrors = map[QueryError]string{
+		QueryErrorNone:      "none",
+		QueryErrorSyntax:    "syntax",
+		QueryErrorNodeType:  "node type",
+		QueryErrorField:     "field",
+		QueryErrorCapture:   "capture",
+		QueryErrorStructure: "structure",
+		QueryErrorLanguage:  "language",
+	}
+	humanQueryStepTypes = map[C.TSQueryPredicateStepType]string{
+		QueryPredicateStepTypeDone:    "done",
+		QueryPredicateStepTypeCapture: "capture",
+		QueryPredicateStepTypeString:  "string",
+	}
+)
+
 // NewQuery creates a new query from a string containing one or more S-expression
 // patterns. The query is associated with a particular language, and can
 // only be run on syntax nodes parsed with that language.
@@ -225,20 +243,7 @@ func NewQuery(pattern []byte, lang *Language) (q *Query, err error) { //nolint:f
 }
 
 func (err QueryError) String() string {
-	switch err {
-	case QueryErrorNone:
-		return "none"
-	case QueryErrorNodeType:
-		return "node type"
-	case QueryErrorField:
-		return "field"
-	case QueryErrorCapture:
-		return "capture"
-	case QueryErrorSyntax:
-		return "syntax"
-	default:
-		return "unknown"
-	}
+	return cmp.Or(humanErrors[err], "unknown")
 }
 
 // close should be called to ensure that all the memory used by the query is freed.
@@ -672,18 +677,8 @@ func (steps QueryPredicateSteps) assertStepType(op string, step int, expType C.T
 		ss = "second"
 	}
 
-	sstep := "unknown"
-
-	switch expType {
-	case QueryPredicateStepTypeDone:
-		sstep = "done"
-	case QueryPredicateStepTypeCapture:
-		sstep = "capture"
-	case QueryPredicateStepTypeString:
-		sstep = "string"
-	}
-
 	if steps[step].Type != expType {
+		sstep := cmp.Or(humanQueryStepTypes[expType], "unknown")
 		err = fmt.Errorf("%s argument of `#%s` %w %s. Got %s",
 			ss, op, ErrPredicateWrongType, sstep, valueFn(steps[step].ValueID))
 	}
