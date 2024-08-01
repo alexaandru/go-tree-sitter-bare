@@ -1,12 +1,13 @@
 package sitter
 
 // #include "sitter.h"
-import "C"
+import "C" //nolint:gocritic // ok
 
 import (
 	"os"
 	"runtime"
 	"sync"
+	"unsafe" //nolint:gocritic // ok
 )
 
 // BaseTree is needed as we use cache for nodes on normal tree object.
@@ -60,10 +61,46 @@ func (i InputEdit) c() *C.TSInputEdit {
 		start_byte:    C.uint32_t(i.StartIndex),
 		old_end_byte:  C.uint32_t(i.OldEndIndex),
 		new_end_byte:  C.uint32_t(i.NewEndIndex),
-		start_point:   mkCPoint(i.StartPoint),
-		old_end_point: mkCPoint(i.OldEndPoint),
-		new_end_point: mkCPoint(i.NewEndPoint),
+		start_point:   i.StartPoint.c(),
+		old_end_point: i.OldEndPoint.c(),
+		new_end_point: i.NewEndPoint.c(),
 	}
+}
+
+func (p Point) c() C.TSPoint {
+	return C.TSPoint{row: C.uint32_t(p.Row), column: C.uint32_t(p.Column)}
+}
+
+func mkPoint(p C.TSPoint) Point {
+	return Point{Row: uint32(p.row), Column: uint32(p.column)}
+}
+
+func (r Range) c() C.TSRange {
+	return C.TSRange{
+		start_point: r.StartPoint.c(),
+		end_point:   r.EndPoint.c(),
+		start_byte:  C.uint32_t(r.StartByte),
+		end_byte:    C.uint32_t(r.EndByte),
+	}
+}
+
+func mkRange(r C.TSRange) Range {
+	return Range{
+		StartPoint: mkPoint(r.start_point),
+		EndPoint:   mkPoint(r.end_point),
+		StartByte:  uint32(r.start_byte),
+		EndByte:    uint32(r.end_byte),
+	}
+}
+
+func mkRanges(p *C.TSRange, count C.uint32_t) (out []Range) {
+	out = make([]Range, count)
+
+	for i, r := range unsafe.Slice(p, int(count)) {
+		out[i] = mkRange(r)
+	}
+
+	return
 }
 
 // newTree creates a new tree object from a C pointer. The function will set a finalizer for the object,

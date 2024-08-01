@@ -23,7 +23,8 @@ type Parser struct {
 // Input type lets you specify how to read the text.
 type Input struct {
 	// Payload an arbitrary pointer that will be passed to each invocation
-	// of the Read function. (TODO: but will it though? In Go too?)
+	// of the Read function. NOTE: I do see it passed into ts_parser_parse()
+	// however I don't see it used. Just keeping it here for documenting purposes.
 	Payload unsafe.Pointer
 	//  Read is a function to retrieve a chunk of text at a given byte offset
 	//  and (row, column) position. The function should return a pointer to the
@@ -52,8 +53,8 @@ type readFuncsMap struct {
 
 // Input encoding types.
 const (
-	InputEncodingUTF8 InputEncoding = iota
-	InputEncodingUTF16
+	InputEncodingUTF8  = C.TSInputEncodingUTF8
+	InputEncodingUTF16 = C.TSInputEncodingUTF16
 )
 
 // maintain a map of read functions that can be called from C
@@ -126,7 +127,7 @@ func (p *Parser) SetLanguage(lang *Language) bool {
 func (p *Parser) SetIncludedRanges(ranges []Range) bool {
 	cRanges := make([]C.TSRange, len(ranges))
 	for i, r := range ranges {
-		cRanges[i] = mkCRange(r)
+		cRanges[i] = r.c()
 	}
 
 	return bool(C.ts_parser_set_included_ranges(p.c, (*C.TSRange)(unsafe.Pointer(&cRanges[0])), C.uint(len(ranges))))

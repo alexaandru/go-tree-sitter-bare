@@ -12,10 +12,9 @@ import (
 // possible using the `Node` functions. It is a mutable object that is always
 // on a certain syntax node, and can be moved imperatively to different nodes.
 type TreeCursor struct {
-	c       *C.TSTreeCursor
-	t       *Tree
-	context [3]uint32 // TODO: How is this used upstream?
-	once    sync.Once
+	c    *C.TSTreeCursor
+	t    *Tree
+	once sync.Once
 }
 
 // NewTreeCursor creates a new tree cursor starting from the given node.
@@ -163,7 +162,7 @@ func (c *TreeCursor) GoToFirstChildForByte(b uint32) int64 {
 // This returns the index of the child node if one was found, and returns -1
 // if no such child was found.
 func (c *TreeCursor) GoToFirstChildForPoint(p Point) int64 {
-	return int64(C.ts_tree_cursor_goto_first_child_for_point(c.c, mkCPoint(p)))
+	return int64(C.ts_tree_cursor_goto_first_child_for_point(c.c, p.c()))
 }
 
 // Copy returns a copy of the tree cursor.

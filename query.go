@@ -13,13 +13,15 @@ import (
 	"unsafe" //nolint:gocritic // ok
 )
 
-// Query API
+// Query is a tree query, compiled from a string of S-expressions. The query
+// itself is immutable. The mutable state used in the process of executing the
+// query is stored in a `TSQueryCursor`.
 type Query struct {
 	c    *C.TSQuery
 	once sync.Once
 }
 
-// QueryCursor carries the state needed for processing the queries.
+// QueryCursor is a stateful struct used to execute a query on a tree.
 type QueryCursor struct {
 	c    *C.TSQueryCursor
 	t    *Tree
@@ -33,21 +35,18 @@ type QueryCapture struct {
 	Index uint32
 }
 
-// QueryMatch - you can then iterate over the matches.
+// QueryMatch allows you to iterate over the matches.
 type QueryMatch struct {
 	Captures     []QueryCapture
 	ID           uint32
 	PatternIndex uint16
 }
 
-type QueryPredicateStepType = C.TSQueryPredicateStepType //nolint:revive // TODO
-
-type QueryPredicateStep struct { //nolint:revive // TODO
-	Type    QueryPredicateStepType
+// QueryPredicateStep represents one step in a predicate.
+type QueryPredicateStep struct {
+	Type    C.TSQueryPredicateStepType
 	ValueID uint32
 }
-
-type Quantifier = C.TSQuantifier //nolint:revive // TODO
 
 // QueryError indicates the type of QueryError.
 type QueryError = C.TSQueryError
@@ -63,29 +62,29 @@ type DetailedQueryError struct {
 
 // Possible query predicate steps.
 const (
-	QueryPredicateStepTypeDone QueryPredicateStepType = iota
-	QueryPredicateStepTypeCapture
-	QueryPredicateStepTypeString
+	QueryPredicateStepTypeDone    = C.TSQueryPredicateStepTypeDone
+	QueryPredicateStepTypeCapture = C.TSQueryPredicateStepTypeCapture
+	QueryPredicateStepTypeString  = C.TSQueryPredicateStepTypeString
 )
 
 // Possible quantifiers.
 const (
-	QuantifierZero = iota
-	QuantifierZeroOrOne
-	QuantifierZeroOrMore
-	QuantifierOne
-	QuantifierOneOrMore
+	QuantifierZero       = C.TSQuantifierZero
+	QuantifierZeroOrOne  = C.TSQuantifierZeroOrOne
+	QuantifierZeroOrMore = C.TSQuantifierZeroOrMore
+	QuantifierOne        = C.TSQuantifierOne
+	QuantifierOneOrMore  = C.TSQuantifierOneOrMore
 )
 
 // Error types.
 const (
-	QueryErrorNone QueryError = iota
-	QueryErrorSyntax
-	QueryErrorNodeType
-	QueryErrorField
-	QueryErrorCapture
-	QueryErrorStructure
-	QueryErrorLanguage
+	QueryErrorNone      QueryError = C.TSQueryErrorNone
+	QueryErrorSyntax    QueryError = C.TSQueryErrorSyntax
+	QueryErrorNodeType  QueryError = C.TSQueryErrorNodeType
+	QueryErrorField     QueryError = C.TSQueryErrorField
+	QueryErrorCapture   QueryError = C.TSQueryErrorCapture
+	QueryErrorStructure QueryError = C.TSQueryErrorStructure
+	QueryErrorLanguage  QueryError = C.TSQueryErrorLanguage
 )
 
 // UnlimitedMaxDepth is used for turning off max depth limit for query cursor.
@@ -100,7 +99,7 @@ const UnlimitedMaxDepth = uint32(C.UINT32_MAX)
 // of information about the problem:
 //  1. The byte offset of the error is written to the `error_offset` parameter.
 //  2. The type of error is written to the `error_type` parameter.
-func NewQuery(pattern []byte, lang *Language) (*Query, error) { //nolint:funlen,gocognit // ok
+func NewQuery(pattern []byte, lang *Language) (q *Query, err error) { //nolint:funlen,gocognit // ok
 	var (
 		erroff  C.uint32_t
 		errtype C.TSQueryError
@@ -170,14 +169,12 @@ func NewQuery(pattern []byte, lang *Language) (*Query, error) { //nolint:funlen,
 		}
 	}
 
-	q := &Query{c: c}
+	q = &Query{c: c}
 
 	// Copied from: https://github.com/klothoplatform/go-tree-sitter/commit/e351b20167b26d515627a4a1a884528ede5fef79
 	// this is just used for syntax validation - it does not actually filter anything
 	for i := range q.PatternCount() {
-		predicates := q.PredicatesForPattern(i)
-
-		for _, steps := range predicates {
+		for _, steps := range q.PredicatesForPattern(i) {
 			if len(steps) == 0 {
 				continue
 			}
@@ -225,7 +222,7 @@ func NewQuery(pattern []byte, lang *Language) (*Query, error) { //nolint:funlen,
 
 	runtime.SetFinalizer(q, (*Query).close)
 
-	return q, nil
+	return
 }
 
 func (err QueryError) String() string {
@@ -345,7 +342,7 @@ func (q *Query) CaptureNameForID(id uint32) string {
 // CaptureQuantifierForID returns the quantifier of the query's captures.
 // Each capture is associated with a numeric id based on the order that it
 // appeared in the query's source.
-func (q *Query) CaptureQuantifierForID(id, captureID uint32) Quantifier {
+func (q *Query) CaptureQuantifierForID(id, captureID uint32) C.TSQuantifier {
 	return C.ts_query_capture_quantifier_for_id(q.c, C.uint32_t(id), C.uint32_t(captureID))
 }
 
@@ -410,16 +407,16 @@ func NewQueryCursor() *QueryCursor {
 //
 // As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
 // parser.close() will be called by Go's garbage collector and users need not call this manually.
-func (qc *QueryCursor) close() {
-	qc.once.Do(func() { C.ts_query_cursor_delete(qc.c) })
+func (c *QueryCursor) close() {
+	c.once.Do(func() { C.ts_query_cursor_delete(c.c) })
 }
 
 // Exec executes the query on a given syntax node.
-func (qc *QueryCursor) Exec(q *Query, n *Node) {
-	qc.q = q
-	qc.t = n.t
+func (c *QueryCursor) Exec(q *Query, n *Node) {
+	c.q = q
+	c.t = n.t
 
-	C.ts_query_cursor_exec(qc.c, q.c, n.c)
+	C.ts_query_cursor_exec(c.c, q.c, n.c)
 }
 
 // Manage the maximum number of in-progress matches allowed by this query
@@ -433,38 +430,38 @@ func (qc *QueryCursor) Exec(q *Query, n *Node) {
 // needed as the query is executed.
 
 // DidExceedMatchLimit see above.
-func (qc *QueryCursor) DidExceedMatchLimit() bool {
-	return bool(C.ts_query_cursor_did_exceed_match_limit(qc.c))
+func (c *QueryCursor) DidExceedMatchLimit() bool {
+	return bool(C.ts_query_cursor_did_exceed_match_limit(c.c))
 }
 
 // MatchLimit see above.
-func (qc *QueryCursor) MatchLimit() uint32 {
-	return uint32(C.ts_query_cursor_match_limit(qc.c))
+func (c *QueryCursor) MatchLimit() uint32 {
+	return uint32(C.ts_query_cursor_match_limit(c.c))
 }
 
 // SetMatchLimit see above.
-func (qc *QueryCursor) SetMatchLimit(limit uint32) {
-	C.ts_query_cursor_set_match_limit(qc.c, C.uint32_t(limit))
+func (c *QueryCursor) SetMatchLimit(limit uint32) {
+	C.ts_query_cursor_set_match_limit(c.c, C.uint32_t(limit))
 }
 
 // SetByteRange sets the range of bytes in which the query will be executed.
-func (qc *QueryCursor) SetByteRange(start, end uint32) {
-	C.ts_query_cursor_set_byte_range(qc.c, C.uint32_t(start), C.uint32_t(end))
+func (c *QueryCursor) SetByteRange(start, end uint32) {
+	C.ts_query_cursor_set_byte_range(c.c, C.uint32_t(start), C.uint32_t(end))
 }
 
 // SetPointRange sets the range of row/column positions in which the query will be executed.
-func (qc *QueryCursor) SetPointRange(start, end Point) {
-	C.ts_query_cursor_set_point_range(qc.c, mkCPoint(start), mkCPoint(end))
+func (c *QueryCursor) SetPointRange(start, end Point) {
+	C.ts_query_cursor_set_point_range(c.c, start.c(), end.c())
 }
 
 // NextMatch iterates over matches.
 // This function will return (nil, false) when there are no more matches.
 // Otherwise, it will populate the QueryMatch with data
 // about which pattern matched and which nodes were captured.
-func (qc *QueryCursor) NextMatch() (*QueryMatch, bool) {
+func (c *QueryCursor) NextMatch() (*QueryMatch, bool) {
 	var cqm C.TSQueryMatch
 
-	if ok := C.ts_query_cursor_next_match(qc.c, &cqm); !bool(ok) { //nolint:gocritic // ok
+	if ok := C.ts_query_cursor_next_match(c.c, &cqm); !bool(ok) { //nolint:gocritic // ok
 		return nil, false
 	}
 
@@ -474,9 +471,9 @@ func (qc *QueryCursor) NextMatch() (*QueryMatch, bool) {
 	}
 
 	cqc := unsafe.Slice(cqm.captures, int(cqm.capture_count))
-	for _, c := range cqc {
-		idx := uint32(c.index)
-		node := qc.t.cachedNode(c.node)
+	for _, cc := range cqc {
+		idx := uint32(cc.index)
+		node := c.t.cachedNode(cc.node)
 		qm.Captures = append(qm.Captures, QueryCapture{Index: idx, Node: node})
 	}
 
@@ -484,21 +481,21 @@ func (qc *QueryCursor) NextMatch() (*QueryMatch, bool) {
 }
 
 // RemoveMatch does smth... TODO
-func (qc *QueryCursor) RemoveMatch(matchID uint32) {
-	C.ts_query_cursor_remove_match(qc.c, C.uint32_t(matchID))
+func (c *QueryCursor) RemoveMatch(matchID uint32) {
+	C.ts_query_cursor_remove_match(c.c, C.uint32_t(matchID))
 }
 
 // NextCapture advances to the next capture of the currently running query.
 //
 // If there is a capture, write its match to `*match` and its index within
 // the matche's capture list to `*capture_index`. Otherwise, return `false`.
-func (qc *QueryCursor) NextCapture() (qm *QueryMatch, idx uint32, ok bool) {
+func (c *QueryCursor) NextCapture() (qm *QueryMatch, idx uint32, ok bool) {
 	var (
 		cqm          C.TSQueryMatch
 		captureIndex C.uint32_t
 	)
 
-	if ok = bool(C.ts_query_cursor_next_capture(qc.c, &cqm, &captureIndex)); !ok { //nolint:gocritic // ok
+	if ok = bool(C.ts_query_cursor_next_capture(c.c, &cqm, &captureIndex)); !ok { //nolint:gocritic // ok
 		return
 	}
 
@@ -508,9 +505,9 @@ func (qc *QueryCursor) NextCapture() (qm *QueryMatch, idx uint32, ok bool) {
 	}
 
 	cqc := unsafe.Slice(cqm.captures, int(cqm.capture_count))
-	for _, c := range cqc {
-		idx2 := uint32(c.index)
-		node := qc.t.cachedNode(c.node)
+	for _, cc := range cqc {
+		idx2 := uint32(cc.index)
+		node := c.t.cachedNode(cc.node)
 		qm.Captures = append(qm.Captures, QueryCapture{Index: idx2, Node: node})
 	}
 
@@ -529,55 +526,50 @@ func (qc *QueryCursor) NextCapture() (qm *QueryMatch, idx uint32, ok bool) {
 // may be searched at any depth what defined by the pattern structure.
 //
 // Set to UnlimitedMaxDepth to remove the maximum start depth.
-func (qc *QueryCursor) SetMaxStartDepth(maxStartDepth uint32) {
-	C.ts_query_cursor_set_max_start_depth(qc.c, C.uint32_t(maxStartDepth))
+func (c *QueryCursor) SetMaxStartDepth(maxStartDepth uint32) {
+	C.ts_query_cursor_set_max_start_depth(c.c, C.uint32_t(maxStartDepth))
 }
 
 // Non API.
 
 // FilterPredicates filters the given query match with the applicable predicates.
-func (qc *QueryCursor) FilterPredicates(m *QueryMatch, input []byte) *QueryMatch { //nolint:funlen,gocognit // ok
-	qm := &QueryMatch{
-		ID:           m.ID,
-		PatternIndex: m.PatternIndex,
-	}
+func (c *QueryCursor) FilterPredicates(m *QueryMatch, input []byte) (qm *QueryMatch) { //nolint:funlen,gocognit // ok
+	qm = &QueryMatch{ID: m.ID, PatternIndex: m.PatternIndex}
 
-	q := qc.q
-
-	predicates := q.PredicatesForPattern(uint32(qm.PatternIndex))
+	predicates := c.q.PredicatesForPattern(uint32(qm.PatternIndex))
 	if len(predicates) == 0 {
 		qm.Captures = m.Captures
 		return qm
 	}
 
-	// track if we matched all predicates globally
+	// Track if we matched all predicates globally.
 	matchedAll := true
 
-	// check each predicate against the match
+	// Check each predicate against the match.
 	for _, steps := range predicates {
 		if len(steps) == 0 {
 			continue
 		}
 
-		switch op := q.StringValueForID(steps[0].ValueID); op {
+		switch op := c.q.StringValueForID(steps[0].ValueID); op {
 		case "eq?", "not-eq?":
 			isPositive := op == "eq?"
-			expectedCaptureNameLeft := q.CaptureNameForID(steps[1].ValueID)
+			expectedCaptureNameLeft := c.q.CaptureNameForID(steps[1].ValueID)
 
 			if steps[2].Type == QueryPredicateStepTypeCapture {
-				expectedCaptureNameRight := q.CaptureNameForID(steps[2].ValueID)
+				expectedCaptureNameRight := c.q.CaptureNameForID(steps[2].ValueID)
 
 				var nodeLeft, nodeRight *Node
 
-				for _, c := range m.Captures {
-					captureName := q.CaptureNameForID(c.Index)
+				for _, cpt := range m.Captures {
+					captureName := c.q.CaptureNameForID(cpt.Index)
 
 					if captureName == expectedCaptureNameLeft {
-						nodeLeft = c.Node
+						nodeLeft = cpt.Node
 					}
 
 					if captureName == expectedCaptureNameRight {
-						nodeRight = c.Node
+						nodeRight = cpt.Node
 					}
 
 					if nodeLeft != nil && nodeRight != nil {
@@ -589,35 +581,33 @@ func (qc *QueryCursor) FilterPredicates(m *QueryMatch, input []byte) *QueryMatch
 					}
 				}
 			} else {
-				expectedValueRight := q.StringValueForID(steps[2].ValueID)
+				expectedValueRight := c.q.StringValueForID(steps[2].ValueID)
 
-				for _, c := range m.Captures {
-					captureName := q.CaptureNameForID(c.Index)
+				for _, cpt := range m.Captures {
+					captureName := c.q.CaptureNameForID(cpt.Index)
 
 					if expectedCaptureNameLeft != captureName {
 						continue
 					}
 
-					if (c.Node.Content(input) == expectedValueRight) != isPositive {
+					if (cpt.Node.Content(input) == expectedValueRight) != isPositive {
 						matchedAll = false
-
 						break
 					}
 				}
 			}
 		case "match?", "not-match?":
 			isPositive := op == "match?"
+			expectedCaptureName := c.q.CaptureNameForID(steps[1].ValueID)
+			regex := regexp.MustCompile(c.q.StringValueForID(steps[2].ValueID))
 
-			expectedCaptureName := q.CaptureNameForID(steps[1].ValueID)
-			regex := regexp.MustCompile(q.StringValueForID(steps[2].ValueID))
-
-			for _, c := range m.Captures {
-				captureName := q.CaptureNameForID(c.Index)
+			for _, cpt := range m.Captures {
+				captureName := c.q.CaptureNameForID(cpt.Index)
 				if expectedCaptureName != captureName {
 					continue
 				}
 
-				if regex.MatchString(c.Node.Content(input)) != isPositive {
+				if regex.MatchString(cpt.Node.Content(input)) != isPositive {
 					matchedAll = false
 					break
 				}
@@ -633,11 +623,11 @@ func (qc *QueryCursor) FilterPredicates(m *QueryMatch, input []byte) *QueryMatch
 		qm.Captures = append(qm.Captures, m.Captures...)
 	}
 
-	return qm
+	return
 }
 
-func (qe *DetailedQueryError) Error() string {
-	return qe.Message
+func (err *DetailedQueryError) Error() string {
+	return err.Message
 }
 
 // Copied From: https://github.com/klothoplatform/go-tree-sitter/commit/e351b20167b26d515627a4a1a884528ede5fef79

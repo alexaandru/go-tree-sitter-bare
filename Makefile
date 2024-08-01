@@ -1,6 +1,6 @@
 GOFLAGS ?= -tags=test
 
-all: lint test
+all: fmt lint test
 
 test:
 	@GOFLAGS="$(GOFLAGS)" go test -cover -coverprofile=unit.cov .
@@ -11,6 +11,9 @@ check_lint:
 
 lint: check_lint
 	@GOFLAGS="$(GOFLAGS)" golangci-lint run . && echo -e "ok\tno linter warnings"
+
+fmt:
+	@ls -1 *.go|while read x; do gofumpt -w -extra $$x; done
 
 # Show missing/unimplemented identifiers,
 # except for wasm and lookahead which are pending.

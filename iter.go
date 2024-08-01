@@ -18,7 +18,8 @@ const (
 	BFSMode
 )
 
-// NewIterator takes a node and mode (DFS/BFS) and returns iterator over children of the node.
+// NewIterator takes a node and mode (DFS/BFS) and returns iterator over
+// children of the node.
 func NewIterator(n *Node, mode IterMode) *Iterator {
 	return &Iterator{
 		named:        false,
@@ -27,7 +28,8 @@ func NewIterator(n *Node, mode IterMode) *Iterator {
 	}
 }
 
-// NewNamedIterator takes a node and mode (DFS/BFS) and returns iterator over named children of the node.
+// NewNamedIterator takes a node and mode (DFS/BFS) and returns iterator
+// over named children of the node.
 func NewNamedIterator(n *Node, mode IterMode) *Iterator {
 	return &Iterator{
 		named:        true,

@@ -8,9 +8,8 @@ import "unsafe" //nolint:gocritic // ok
 // It tracks its start and end positions in the source code,
 // as well as its relation to other nodes like its parent, siblings and children.
 type Node struct {
-	c       C.TSNode
-	t       *Tree     // keep pointer on tree because node is valid only as long as tree is
-	context [4]uint32 // TODO: How is this used upstream?
+	c C.TSNode
+	t *Tree // keep pointer on tree because node is valid only as long as tree is
 }
 
 // Symbol indicates the type of symbol.
@@ -18,16 +17,12 @@ type Symbol = C.TSSymbol
 
 // Possible symbol types.
 const (
-	SymbolTypeRegular Symbol = iota
-	SymbolTypeAnonymous
-	SymbolTypeAuxiliary
+	SymbolTypeRegular   Symbol = C.TSSymbolTypeRegular
+	SymbolTypeAnonymous Symbol = C.TSSymbolTypeAnonymous
+	SymbolTypeAuxiliary Symbol = C.TSSymbolTypeAuxiliary
 )
 
-var symbolTypeNames = []string{
-	"Regular",
-	"Anonymous",
-	"Auxiliary",
-}
+var symbolTypeNames = []string{"Regular", "Anonymous", "Auxiliary"}
 
 func (t Symbol) String() string {
 	return symbolTypeNames[t]
@@ -278,7 +273,7 @@ func (n Node) DescendantForByteRange(start, end uint32) *Node {
 // DescendantForPointRange returns the smallest node within this node that spans
 // the given range of {row, column} positions.
 func (n Node) DescendantForPointRange(start, end Point) *Node {
-	nn := C.ts_node_descendant_for_point_range(n.c, mkCPoint(start), mkCPoint(end))
+	nn := C.ts_node_descendant_for_point_range(n.c, start.c(), end.c())
 	return n.t.cachedNode(nn)
 }
 
@@ -292,7 +287,7 @@ func (n Node) NamedDescendantForByteRange(start, end uint32) *Node {
 // NamedDescendantForPointRange returns the smallest named node within this node
 // that spans the given range of row/column positions.
 func (n Node) NamedDescendantForPointRange(start, end Point) *Node {
-	nn := C.ts_node_named_descendant_for_point_range(n.c, mkCPoint(start), mkCPoint(end))
+	nn := C.ts_node_named_descendant_for_point_range(n.c, start.c(), end.c())
 	return n.t.cachedNode(nn)
 }
 
