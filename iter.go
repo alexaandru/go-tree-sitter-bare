@@ -7,9 +7,9 @@ type IterMode int
 
 // Iterator for a tree of nodes.
 type Iterator struct {
-	nodesToVisit []*Node
-	mode         IterMode
-	named        bool
+	toVisit []*Node
+	mode    IterMode
+	named   bool
 }
 
 // The possible iteration modes.
@@ -21,32 +21,24 @@ const (
 // NewIterator takes a node and mode (DFS/BFS) and returns iterator over
 // children of the node.
 func NewIterator(n *Node, mode IterMode) *Iterator {
-	return &Iterator{
-		named:        false,
-		mode:         mode,
-		nodesToVisit: []*Node{n},
-	}
+	return &Iterator{toVisit: []*Node{n}, mode: mode}
 }
 
 // NewNamedIterator takes a node and mode (DFS/BFS) and returns iterator
 // over named children of the node.
 func NewNamedIterator(n *Node, mode IterMode) *Iterator {
-	return &Iterator{
-		named:        true,
-		mode:         mode,
-		nodesToVisit: []*Node{n},
-	}
+	return &Iterator{toVisit: []*Node{n}, mode: mode, named: true}
 }
 
 // Next returns the next node in the current iteration.
 func (iter *Iterator) Next() (n *Node, err error) {
-	if len(iter.nodesToVisit) == 0 {
+	if len(iter.toVisit) == 0 {
 		return nil, io.EOF
 	}
 
 	var children []*Node
 
-	n, iter.nodesToVisit = iter.nodesToVisit[0], iter.nodesToVisit[1:]
+	n, iter.toVisit = iter.toVisit[0], iter.toVisit[1:]
 
 	if iter.named {
 		for i := range n.NamedChildCount() {
@@ -60,9 +52,9 @@ func (iter *Iterator) Next() (n *Node, err error) {
 
 	switch iter.mode {
 	case DFSMode:
-		iter.nodesToVisit = append(children, iter.nodesToVisit...)
+		iter.toVisit = append(children, iter.toVisit...)
 	case BFSMode:
-		iter.nodesToVisit = append(iter.nodesToVisit, children...)
+		iter.toVisit = append(iter.toVisit, children...)
 	default:
 		panic("not implemented")
 	}

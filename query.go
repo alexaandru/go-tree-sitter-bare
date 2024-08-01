@@ -103,7 +103,7 @@ var (
 
 //nolint:gochecknoglobals // ok
 var (
-	humanErrors = map[QueryError]string{
+	humanQueryErrors = map[QueryError]string{
 		QueryErrorNone:      "none",
 		QueryErrorSyntax:    "syntax",
 		QueryErrorNodeType:  "node type",
@@ -128,7 +128,7 @@ var (
 // of information about the problem:
 //  1. The byte offset of the error is written to the `error_offset` parameter.
 //  2. The type of error is written to the `error_type` parameter.
-func NewQuery(pattern []byte, lang *Language) (q *Query, err error) { //nolint:funlen,cyclop // TODO
+func NewQuery(pattern []byte, lang *Language) (q *Query, err error) {
 	var (
 		erroff  C.uint
 		errtype C.TSQueryError
@@ -145,93 +145,16 @@ func NewQuery(pattern []byte, lang *Language) (q *Query, err error) { //nolint:f
 
 	C.free(input)
 
-	// TODO: Move it's body into a function.
 	if errtype != QueryErrorNone {
-		errorOffset := uint32(erroff)
-		// search for the line containing the offset
-		line := 1
-		lineStart := 0
-
-		for i, c := range pattern {
-			lineStart = i
-			if uint32(i) >= errorOffset {
-				break
-			}
-			if c == '\n' {
-				line++
-			}
-		}
-
-		column := int(errorOffset) - lineStart
-		errorType := QueryError(errtype) //nolint:unconvert // needed for extra methods
-
-		var message string
-
-		switch errorType {
-		// Errors that apply to a single identifier.
-		case QueryErrorNodeType, QueryErrorField, QueryErrorCapture:
-			// find identifier at input[errorOffset]
-			// and report it in the error message
-			s := string(pattern[errorOffset:])
-			identifierRegexp := regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_-]*`)
-			m := identifierRegexp.FindStringSubmatch(s)
-			if len(m) > 0 {
-				message = fmt.Sprintf("invalid %s '%s' at line %d column %d",
-					errorType, m[0], line, column)
-			} else {
-				message = fmt.Sprintf("invalid %s at line %d column %d",
-					errorType, line, column)
-			}
-
-		// Errors the report position: QueryErrorSyntax, QueryErrorStructure, QueryErrorLanguage.
-		default:
-			s := string(pattern[errorOffset:])
-			lines := strings.Split(s, "\n")
-			whitespace := strings.Repeat(" ", column)
-			message = fmt.Sprintf("invalid %s at line %d column %d\n%s\n%s^",
-				errorType, line, column, lines[0], whitespace)
-		}
-
-		return nil, &DetailedQueryError{
-			Offset:  errorOffset,
-			Type:    errorType,
-			Message: message,
-		}
+		return nil, newDetailedQueryError(pattern, errtype, erroff)
 	}
 
 	q = &Query{c: c}
 	id2str := q.StringValueForID
 
-	// Copied from: https://github.com/klothoplatform/go-tree-sitter/commit/e351b20167b26d515627a4a1a884528ede5fef79
-	// this is just used for syntax validation - it does not actually filter anything
 	for i := range q.PatternCount() {
 		for _, steps := range q.PredicatesForPattern(i) {
-			if len(steps) == 0 {
-				continue
-			}
-
-			if steps[0].Type != QueryPredicateStepTypeString {
-				return nil, ErrPredicateWrongStart
-			}
-
-			var err1, err2, err3 error
-
-			//nolint:mnd // ok
-			switch op := q.StringValueForID(steps[0].ValueID); op {
-			case "eq?", "not-eq?":
-				err1 = steps.assertCount(op, 4)
-				err2 = steps.assertStepType(op, 1, QueryPredicateStepTypeCapture, id2str)
-			case "match?", "not-match?":
-				err1 = steps.assertCount(op, 4)
-				err2 = steps.assertStepType(op, 1, QueryPredicateStepTypeCapture, id2str)
-				err3 = steps.assertStepType(op, 2, QueryPredicateStepTypeString, id2str)
-			case "set!", "is?", "is-not?":
-				err1 = steps.assertCount(op, 3, 4)
-				err2 = steps.assertStepType(op, 1, QueryPredicateStepTypeString, id2str)
-				err3 = steps.assertStepType(op, 2, QueryPredicateStepTypeString, id2str)
-			}
-
-			if err = cmp.Or(err1, err2, err3); err != nil { //nolint:gocritic // ok
+			if err = steps.assertValid(id2str); err != nil { //nolint:gocritic // ok
 				return //nolint:nakedret // ok
 			}
 		}
@@ -242,8 +165,57 @@ func NewQuery(pattern []byte, lang *Language) (q *Query, err error) { //nolint:f
 	return //nolint:nakedret // ok
 }
 
+func newDetailedQueryError(pattern []byte, errtype C.TSQueryError, erroff C.uint) *DetailedQueryError {
+	errorOffset := uint32(erroff)
+	// search for the line containing the offset
+	line := 1
+	lineStart := 0
+
+	for i, c := range pattern {
+		lineStart = i
+		if uint32(i) >= errorOffset {
+			break
+		}
+		if c == '\n' {
+			line++
+		}
+	}
+
+	column := int(errorOffset) - lineStart
+	errorType := QueryError(errtype) //nolint:unconvert // needed for extra methods
+
+	var message string
+
+	switch errorType {
+	// Errors that apply to a single identifier.
+	case QueryErrorNodeType, QueryErrorField, QueryErrorCapture:
+		// find identifier at input[errorOffset]
+		// and report it in the error message
+		s := string(pattern[errorOffset:])
+		identifierRegexp := regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_-]*`)
+		m := identifierRegexp.FindStringSubmatch(s)
+		if len(m) > 0 {
+			message = fmt.Sprintf("invalid %s '%s' at line %d column %d",
+				errorType, m[0], line, column)
+		} else {
+			message = fmt.Sprintf("invalid %s at line %d column %d",
+				errorType, line, column)
+		}
+
+	// Errors the report position: QueryErrorSyntax, QueryErrorStructure, QueryErrorLanguage.
+	default:
+		s := string(pattern[errorOffset:])
+		lines := strings.Split(s, "\n")
+		whitespace := strings.Repeat(" ", column)
+		message = fmt.Sprintf("invalid %s at line %d column %d\n%s\n%s^",
+			errorType, line, column, lines[0], whitespace)
+	}
+
+	return &DetailedQueryError{Offset: errorOffset, Type: errorType, Message: message}
+}
+
 func (err QueryError) String() string {
-	return cmp.Or(humanErrors[err], "unknown")
+	return cmp.Or(humanQueryErrors[err], "unknown")
 }
 
 // close should be called to ensure that all the memory used by the query is freed.
@@ -645,6 +617,35 @@ func (steps QueryPredicateSteps) split() (out []QueryPredicateSteps) {
 	}
 
 	return
+}
+
+func (steps QueryPredicateSteps) assertValid(valueFn func(uint32) string) (err error) {
+	if len(steps) == 0 {
+		return
+	}
+
+	if steps[0].Type != QueryPredicateStepTypeString {
+		return ErrPredicateWrongStart
+	}
+
+	var errx [3]error
+
+	//nolint:mnd // ok
+	switch op := valueFn(steps[0].ValueID); op {
+	case "eq?", "not-eq?":
+		errx[0] = steps.assertCount(op, 4)
+		errx[1] = steps.assertStepType(op, 1, QueryPredicateStepTypeCapture, valueFn)
+	case "match?", "not-match?":
+		errx[0] = steps.assertCount(op, 4)
+		errx[1] = steps.assertStepType(op, 1, QueryPredicateStepTypeCapture, valueFn)
+		errx[2] = steps.assertStepType(op, 2, QueryPredicateStepTypeString, valueFn)
+	case "set!", "is?", "is-not?":
+		errx[0] = steps.assertCount(op, 3, 4)
+		errx[1] = steps.assertStepType(op, 1, QueryPredicateStepTypeString, valueFn)
+		errx[2] = steps.assertStepType(op, 2, QueryPredicateStepTypeString, valueFn)
+	}
+
+	return cmp.Or(errx[:]...) //nolint:wrapcheck // ok, the actual errors are wrapped
 }
 
 func (steps QueryPredicateSteps) assertCount(op string, expCount int, opts ...int) (err error) {
