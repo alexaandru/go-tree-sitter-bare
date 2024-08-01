@@ -48,7 +48,7 @@ type ReadFunc func(offset uint32, position Point) []byte
 // keeps callbacks for parser.parse method
 type readFuncsMap struct {
 	funcs map[int]ReadFunc
-	sync.Mutex
+	sync.RWMutex
 }
 
 // Input encoding types.
@@ -57,7 +57,7 @@ const (
 	InputEncodingUTF16 = C.TSInputEncodingUTF16
 )
 
-// maintain a map of read functions that can be called from C
+// Maintain a map of read functions that can be called from C.
 var readFuncs = &readFuncsMap{funcs: map[int]ReadFunc{}}
 
 // Possible error types.
@@ -351,8 +351,8 @@ func (m *readFuncsMap) unregister(id int) {
 }
 
 func (m *readFuncsMap) get(id int) ReadFunc {
-	m.Lock()
-	defer m.Unlock()
+	m.RLock()
+	defer m.RUnlock()
 
 	return m.funcs[id]
 }

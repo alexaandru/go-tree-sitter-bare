@@ -22,16 +22,13 @@ type TreeCursor struct {
 // A tree cursor allows you to walk a syntax tree more efficiently than is
 // possible using the [`TSNode`] functions. It is a mutable object that is always
 // on a certain syntax node, and can be moved imperatively to different nodes.
-func NewTreeCursor(n *Node) *TreeCursor {
+func NewTreeCursor(n *Node) (c *TreeCursor) {
 	cc := C.ts_tree_cursor_new(n.c)
-	c := &TreeCursor{
-		c: &cc,
-		t: n.t,
-	}
+	c = &TreeCursor{c: &cc, t: n.t}
 
 	runtime.SetFinalizer(c, (*TreeCursor).close)
 
-	return c
+	return
 }
 
 // close should be called to ensure that all the memory used by the tree cursor

@@ -28,9 +28,11 @@ func (l *Language) Copy() *Language {
 // Delete frees any dynamically-allocated resources for this language, if
 // this is the last reference.
 func (l *Language) Delete() {
-	l.once.Do(func() { C.ts_language_delete((*C.TSLanguage)(l.ptr)) })
-	l.ptr = nil
-	l = nil
+	l.once.Do(func() {
+		C.ts_language_delete((*C.TSLanguage)(l.ptr))
+		l.ptr = nil
+		l = nil
+	})
 }
 
 // SymbolCount returns the number of distinct field names in the language.

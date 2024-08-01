@@ -116,6 +116,7 @@ func NewQuery(pattern []byte, lang *Language) (q *Query, err error) { //nolint:f
 
 	C.free(input)
 
+	// TODO: Move it's body into a function.
 	if errtype != QueryErrorNone {
 		errorOffset := uint32(erroff)
 		// search for the line containing the offset
@@ -332,8 +333,7 @@ func (q *Query) IsPatternGuaranteedAtStep(byteOfs uint32) bool {
 // or one of the  query's string literals. Each capture and string is associated
 // with a  numeric id based on the order that it appeared in the query's source.
 func (q *Query) CaptureNameForID(id uint32) string {
-	var length C.uint32_t
-
+	length := C.uint32_t(0)
 	name := C.ts_query_capture_name_for_id(q.c, C.uint32_t(id), &length)
 
 	return C.GoStringN(name, C.int(length))
@@ -413,9 +413,7 @@ func (c *QueryCursor) close() {
 
 // Exec executes the query on a given syntax node.
 func (c *QueryCursor) Exec(q *Query, n *Node) {
-	c.q = q
-	c.t = n.t
-
+	c.q, c.t = q, n.t
 	C.ts_query_cursor_exec(c.c, q.c, n.c)
 }
 
@@ -632,11 +630,8 @@ func (err *DetailedQueryError) Error() string {
 
 // Copied From: https://github.com/klothoplatform/go-tree-sitter/commit/e351b20167b26d515627a4a1a884528ede5fef79
 
-func splitPredicates(steps []QueryPredicateStep) [][]QueryPredicateStep {
-	var (
-		predicateSteps [][]QueryPredicateStep
-		currentSteps   = make([]QueryPredicateStep, 0, len(steps))
-	)
+func splitPredicates(steps []QueryPredicateStep) (predicateSteps [][]QueryPredicateStep) {
+	currentSteps := make([]QueryPredicateStep, 0, len(steps))
 
 	for _, step := range steps {
 		currentSteps = append(currentSteps, step)
@@ -646,5 +641,5 @@ func splitPredicates(steps []QueryPredicateStep) [][]QueryPredicateStep {
 		}
 	}
 
-	return predicateSteps
+	return
 }

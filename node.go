@@ -66,8 +66,7 @@ func (n Node) StartByte() uint32 {
 
 // StartPoint returns the node's start position in terms of rows and columns.
 func (n Node) StartPoint() Point {
-	p := C.ts_node_start_point(n.c)
-	return Point{Row: uint32(p.row), Column: uint32(p.column)}
+	return mkPoint(C.ts_node_start_point(n.c))
 }
 
 // EndByte returns the node's end byte.
@@ -77,8 +76,7 @@ func (n Node) EndByte() uint32 {
 
 // EndPoint returns the node's end position in terms of rows and columns.
 func (n Node) EndPoint() Point {
-	p := C.ts_node_end_point(n.c)
-	return Point{Row: uint32(p.row), Column: uint32(p.column)}
+	return mkPoint(C.ts_node_end_point(n.c))
 }
 
 // String returns an S-expression representing the node as a string.
