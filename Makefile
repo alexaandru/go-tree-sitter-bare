@@ -1,6 +1,6 @@
 GOFLAGS ?= -tags=test
 
-all: unimplemented fmt lint test
+all: unimplemented todo fmt lint test
 
 test:
 	@GOFLAGS="$(GOFLAGS)" go test -cover -coverprofile=unit.cov .
@@ -14,6 +14,9 @@ lint: check_lint
 
 fmt:
 	@ls -1 *.go|while read x; do gofumpt -w -extra $$x; done
+
+todo:
+	@grep -E '(FIXME|TODO):' *.go
 
 # Show missing/unimplemented identifiers,
 # except for wasm (ignored) and lookahead (maybe pending?).
