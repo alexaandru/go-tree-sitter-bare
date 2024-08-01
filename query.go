@@ -101,7 +101,7 @@ const UnlimitedMaxDepth = uint32(C.UINT32_MAX)
 //  2. The type of error is written to the `error_type` parameter.
 func NewQuery(pattern []byte, lang *Language) (q *Query, err error) { //nolint:funlen,gocognit // ok
 	var (
-		erroff  C.uint32_t
+		erroff  C.uint
 		errtype C.TSQueryError
 	)
 
@@ -109,7 +109,7 @@ func NewQuery(pattern []byte, lang *Language) (q *Query, err error) { //nolint:f
 	c := C.ts_query_new( //nolint:varnamelen // ok
 		(*C.struct_TSLanguage)(lang.ptr),
 		(*C.char)(input),
-		C.uint32_t(len(pattern)),
+		C.uint(len(pattern)),
 		&erroff,
 		&errtype, //nolint:nlreturn // false positive
 	)
@@ -272,7 +272,7 @@ func (q *Query) StringCount() uint32 {
 // This can be useful when combining queries by concatenating their source
 // code strings.
 func (q *Query) StartByteForPattern(patIdx uint32) uint32 {
-	return uint32(C.ts_query_start_byte_for_pattern(q.c, C.uint32_t(patIdx)))
+	return uint32(C.ts_query_start_byte_for_pattern(q.c, C.uint(patIdx)))
 }
 
 // PredicatesForPattern returns all of the predicates for the given pattern in the query.
@@ -291,11 +291,11 @@ func (q *Query) StartByteForPattern(patIdx uint32) uint32 {
 //     predicates, then there will be two steps with this `type` in the array.
 func (q *Query) PredicatesForPattern(patternIndex uint32) [][]QueryPredicateStep {
 	var ( //nolint:prealloc // no
-		length         C.uint32_t
+		length         C.uint
 		predicateSteps []QueryPredicateStep
 	)
 
-	cPredicateStep := C.ts_query_predicates_for_pattern(q.c, C.uint32_t(patternIndex), &length)
+	cPredicateStep := C.ts_query_predicates_for_pattern(q.c, C.uint(patternIndex), &length)
 	cPredicateSteps := unsafe.Slice(cPredicateStep, int(length))
 
 	for _, s := range cPredicateSteps {
@@ -309,7 +309,7 @@ func (q *Query) PredicatesForPattern(patternIndex uint32) [][]QueryPredicateStep
 
 // IsPatternRooted checks if the given pattern in the query has a single root node.
 func (q *Query) IsPatternRooted(patIdx uint32) bool {
-	return bool(C.ts_query_is_pattern_rooted(q.c, C.uint32_t(patIdx)))
+	return bool(C.ts_query_is_pattern_rooted(q.c, C.uint(patIdx)))
 }
 
 // IsPatternNonLocal checks if the given pattern in the query is 'non local'.
@@ -319,22 +319,22 @@ func (q *Query) IsPatternRooted(patIdx uint32) bool {
 // patterns disable certain optimizations that would otherwise be possible
 // when executing a query on a specific range of a syntax tree.
 func (q *Query) IsPatternNonLocal(patIdx uint32) bool {
-	return bool(C.ts_query_is_pattern_non_local(q.c, C.uint32_t(patIdx)))
+	return bool(C.ts_query_is_pattern_non_local(q.c, C.uint(patIdx)))
 }
 
 // IsPatternGuaranteedAtStep checks if a given pattern is guaranteed to
 // match once a given step is reached.
 // The step is specified by its byte offset in the query's source code.
 func (q *Query) IsPatternGuaranteedAtStep(byteOfs uint32) bool {
-	return bool(C.ts_query_is_pattern_guaranteed_at_step(q.c, C.uint32_t(byteOfs)))
+	return bool(C.ts_query_is_pattern_guaranteed_at_step(q.c, C.uint(byteOfs)))
 }
 
 // CaptureNameForID returns the name and length of one of the query's captures,
 // or one of the  query's string literals. Each capture and string is associated
 // with a  numeric id based on the order that it appeared in the query's source.
 func (q *Query) CaptureNameForID(id uint32) string {
-	length := C.uint32_t(0)
-	name := C.ts_query_capture_name_for_id(q.c, C.uint32_t(id), &length)
+	length := C.uint(0)
+	name := C.ts_query_capture_name_for_id(q.c, C.uint(id), &length)
 
 	return C.GoStringN(name, C.int(length))
 }
@@ -343,13 +343,13 @@ func (q *Query) CaptureNameForID(id uint32) string {
 // Each capture is associated with a numeric id based on the order that it
 // appeared in the query's source.
 func (q *Query) CaptureQuantifierForID(id, captureID uint32) C.TSQuantifier {
-	return C.ts_query_capture_quantifier_for_id(q.c, C.uint32_t(id), C.uint32_t(captureID))
+	return C.ts_query_capture_quantifier_for_id(q.c, C.uint(id), C.uint(captureID))
 }
 
 // StringValueForID returns the string value associated with the given query id.
 func (q *Query) StringValueForID(id uint32) string {
-	length := C.uint32_t(0)
-	value := C.ts_query_string_value_for_id(q.c, C.uint32_t(id), &length)
+	length := C.uint(0)
+	value := C.ts_query_string_value_for_id(q.c, C.uint(id), &length)
 
 	return C.GoStringN(value, C.int(length))
 }
@@ -363,7 +363,7 @@ func (q *Query) DisableCapture(name string) {
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
 
-	C.ts_query_disable_capture(q.c, cName, C.uint32_t(len(name)))
+	C.ts_query_disable_capture(q.c, cName, C.uint(len(name)))
 }
 
 // DisablePattern disables a certain pattern within a query.
@@ -371,7 +371,7 @@ func (q *Query) DisableCapture(name string) {
 // This prevents the pattern from matching and removes most of the overhead
 // associated with the pattern. Currently, there is no way to undo this.
 func (q *Query) DisablePattern(patIdx uint32) {
-	C.ts_query_disable_pattern(q.c, C.uint32_t(patIdx))
+	C.ts_query_disable_pattern(q.c, C.uint(patIdx))
 }
 
 // NewQueryCursor creates a new query cursor.
@@ -439,12 +439,12 @@ func (c *QueryCursor) MatchLimit() uint32 {
 
 // SetMatchLimit see above.
 func (c *QueryCursor) SetMatchLimit(limit uint32) {
-	C.ts_query_cursor_set_match_limit(c.c, C.uint32_t(limit))
+	C.ts_query_cursor_set_match_limit(c.c, C.uint(limit))
 }
 
 // SetByteRange sets the range of bytes in which the query will be executed.
 func (c *QueryCursor) SetByteRange(start, end uint32) {
-	C.ts_query_cursor_set_byte_range(c.c, C.uint32_t(start), C.uint32_t(end))
+	C.ts_query_cursor_set_byte_range(c.c, C.uint(start), C.uint(end))
 }
 
 // SetPointRange sets the range of row/column positions in which the query will be executed.
@@ -480,7 +480,7 @@ func (c *QueryCursor) NextMatch() (*QueryMatch, bool) {
 
 // RemoveMatch does smth... TODO
 func (c *QueryCursor) RemoveMatch(matchID uint32) {
-	C.ts_query_cursor_remove_match(c.c, C.uint32_t(matchID))
+	C.ts_query_cursor_remove_match(c.c, C.uint(matchID))
 }
 
 // NextCapture advances to the next capture of the currently running query.
@@ -489,11 +489,11 @@ func (c *QueryCursor) RemoveMatch(matchID uint32) {
 // the matche's capture list to `*capture_index`. Otherwise, return `false`.
 func (c *QueryCursor) NextCapture() (qm *QueryMatch, idx uint32, ok bool) {
 	var (
-		cqm          C.TSQueryMatch
-		captureIndex C.uint32_t
+		cqm C.TSQueryMatch
+		cqi C.uint
 	)
 
-	if ok = bool(C.ts_query_cursor_next_capture(c.c, &cqm, &captureIndex)); !ok { //nolint:gocritic // ok
+	if ok = bool(C.ts_query_cursor_next_capture(c.c, &cqm, &cqi)); !ok { //nolint:gocritic // ok
 		return
 	}
 
@@ -509,7 +509,7 @@ func (c *QueryCursor) NextCapture() (qm *QueryMatch, idx uint32, ok bool) {
 		qm.Captures = append(qm.Captures, QueryCapture{Index: idx2, Node: node})
 	}
 
-	return qm, uint32(captureIndex), true
+	return qm, uint32(cqi), true
 }
 
 // SetMaxStartDepth sets the maximum start depth for a query cursor.
@@ -525,7 +525,7 @@ func (c *QueryCursor) NextCapture() (qm *QueryMatch, idx uint32, ok bool) {
 //
 // Set to UnlimitedMaxDepth to remove the maximum start depth.
 func (c *QueryCursor) SetMaxStartDepth(maxStartDepth uint32) {
-	C.ts_query_cursor_set_max_start_depth(c.c, C.uint32_t(maxStartDepth))
+	C.ts_query_cursor_set_max_start_depth(c.c, C.uint(maxStartDepth))
 }
 
 // Non API.

@@ -168,14 +168,14 @@ func (n Node) ChildContainingDescendant(d *Node) *Node {
 // Child returns the node's child at the given index, where zero represents the
 // first child.
 func (n Node) Child(idx uint32) *Node {
-	nn := C.ts_node_child(n.c, C.uint32_t(idx))
+	nn := C.ts_node_child(n.c, C.uint(idx))
 	return n.t.cachedNode(nn)
 }
 
 // FieldNameForChild returns the field name of the child at the given index,
 // or "" if not named.
 func (n Node) FieldNameForChild(idx int) string {
-	return C.GoString(C.ts_node_field_name_for_child(n.c, C.uint32_t(idx)))
+	return C.GoString(C.ts_node_field_name_for_child(n.c, C.uint(idx)))
 }
 
 // ChildCount returns the node's number of children.
@@ -187,7 +187,7 @@ func (n Node) ChildCount() uint32 {
 //
 // See also `ts_node_is_named`.
 func (n Node) NamedChild(idx uint32) *Node {
-	nn := C.ts_node_named_child(n.c, C.uint32_t(idx))
+	nn := C.ts_node_named_child(n.c, C.uint(idx))
 	return n.t.cachedNode(nn)
 }
 
@@ -203,7 +203,7 @@ func (n Node) ChildByFieldName(name string) *Node {
 	str := C.CString(name)
 	defer C.free(unsafe.Pointer(str))
 
-	nn := C.ts_node_child_by_field_name(n.c, str, C.uint32_t(len(name)))
+	nn := C.ts_node_child_by_field_name(n.c, str, C.uint(len(name)))
 
 	return n.t.cachedNode(nn)
 }
@@ -244,14 +244,14 @@ func (n Node) PrevNamedSibling() *Node {
 // FirstChildForByte returns the node's first child that extends beyond the
 // given byte offset.
 func (n Node) FirstChildForByte(ofs uint32) *Node {
-	nn := C.ts_node_first_child_for_byte(n.c, C.uint32_t(ofs))
+	nn := C.ts_node_first_child_for_byte(n.c, C.uint(ofs))
 	return n.t.cachedNode(nn)
 }
 
 // FirstNamedChildForByte returns the node's first named child that extends
 // beyond the given byte offset.
 func (n Node) FirstNamedChildForByte(ofs uint32) *Node {
-	nn := C.ts_node_first_named_child_for_byte(n.c, C.uint32_t(ofs))
+	nn := C.ts_node_first_named_child_for_byte(n.c, C.uint(ofs))
 	return n.t.cachedNode(nn)
 }
 
@@ -264,7 +264,7 @@ func (n Node) DescendantCount() uint32 {
 // DescendantForByteRange returns the smallest node within this node that spans
 // the given range of bytes.
 func (n Node) DescendantForByteRange(start, end uint32) *Node {
-	nn := C.ts_node_descendant_for_byte_range(n.c, C.uint32_t(start), C.uint32_t(end))
+	nn := C.ts_node_descendant_for_byte_range(n.c, C.uint(start), C.uint(end))
 	return n.t.cachedNode(nn)
 }
 
@@ -278,7 +278,7 @@ func (n Node) DescendantForPointRange(start, end Point) *Node {
 // NamedDescendantForByteRange returns the smallest named node within this node
 // that spans the given range of bytes.
 func (n Node) NamedDescendantForByteRange(start, end uint32) *Node {
-	nn := C.ts_node_named_descendant_for_byte_range(n.c, C.uint32_t(start), C.uint32_t(end))
+	nn := C.ts_node_named_descendant_for_byte_range(n.c, C.uint(start), C.uint(end))
 	return n.t.cachedNode(nn)
 }
 

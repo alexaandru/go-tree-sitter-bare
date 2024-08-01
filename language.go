@@ -55,7 +55,7 @@ func (l *Language) SymbolID(name string, isNamed bool) Symbol {
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
 
-	return C.ts_language_symbol_for_name((*C.TSLanguage)(l.ptr), cName, C.uint32_t(len(name)), C._Bool(isNamed))
+	return C.ts_language_symbol_for_name((*C.TSLanguage)(l.ptr), cName, C.uint(len(name)), C._Bool(isNamed))
 }
 
 // FieldCount returns the number of distinct field names in the language.
@@ -73,7 +73,7 @@ func (l *Language) FieldID(name string) FieldID {
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
 
-	return C.ts_language_field_id_for_name((*C.TSLanguage)(l.ptr), cName, C.uint32_t(len(name)))
+	return C.ts_language_field_id_for_name((*C.TSLanguage)(l.ptr), cName, C.uint(len(name)))
 }
 
 // SymbolType returns named, anonymous, or a hidden type for a Symbol.

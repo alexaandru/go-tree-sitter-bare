@@ -129,7 +129,7 @@ func (c *TreeCursor) GotoLastChild() bool {
 // the original node that the cursor was constructed with, where
 // zero represents the original node itself.
 func (c *TreeCursor) GotoDescendant(goalDescendantIndex uint32) {
-	C.ts_tree_cursor_goto_descendant(c.c, C.uint32_t(goalDescendantIndex))
+	C.ts_tree_cursor_goto_descendant(c.c, C.uint(goalDescendantIndex))
 }
 
 // CurrentDescendantIndex returns the index of the cursor's current node out of all of the
@@ -150,7 +150,7 @@ func (c *TreeCursor) CurrentDepth() uint32 {
 // This returns the index of the child node if one was found, and returns -1
 // if no such child was found.
 func (c *TreeCursor) GoToFirstChildForByte(b uint32) int64 {
-	return int64(C.ts_tree_cursor_goto_first_child_for_byte(c.c, C.uint32_t(b)))
+	return int64(C.ts_tree_cursor_goto_first_child_for_byte(c.c, C.uint(b)))
 }
 
 // GoToFirstChildForPoint moves the cursor to the first child of its current node

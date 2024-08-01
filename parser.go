@@ -138,7 +138,7 @@ func (p *Parser) SetIncludedRanges(ranges []Range) bool {
 // The returned pointer is owned by the parser. The caller should not free it
 // or write to it.
 func (p *Parser) IncludedRanges() (out []Range) {
-	count := C.uint32_t(0)
+	count := C.uint(0)
 	pp := C.ts_parser_included_ranges(p.c, &count)
 
 	return mkRanges(pp, count)
@@ -216,9 +216,9 @@ func (p *Parser) ParseString(ctx context.Context, oldTree *Tree, content []byte,
 	input := C.CBytes(content)
 
 	if len(opts) > 0 {
-		baseTree = C.ts_parser_parse_string_encoding(p.c, baseTree, (*C.char)(input), C.uint32_t(len(content)), opts[0])
+		baseTree = C.ts_parser_parse_string_encoding(p.c, baseTree, (*C.char)(input), C.uint(len(content)), opts[0])
 	} else {
-		baseTree = C.ts_parser_parse_string(p.c, baseTree, (*C.char)(input), C.uint32_t(len(content)))
+		baseTree = C.ts_parser_parse_string(p.c, baseTree, (*C.char)(input), C.uint(len(content)))
 	}
 
 	close(parseComplete)
@@ -299,7 +299,7 @@ func (p *Parser) PrintDotGraphs(name string) (err error) {
 		return
 	}
 
-	C.ts_parser_print_dot_graphs(p.c, C.int32_t(f.Fd()))
+	C.ts_parser_print_dot_graphs(p.c, C.int(f.Fd()))
 
 	return f.Close()
 }

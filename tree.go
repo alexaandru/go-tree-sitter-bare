@@ -58,9 +58,9 @@ type InputEdit struct {
 
 func (i InputEdit) c() *C.TSInputEdit {
 	return &C.TSInputEdit{
-		start_byte:    C.uint32_t(i.StartIndex),
-		old_end_byte:  C.uint32_t(i.OldEndIndex),
-		new_end_byte:  C.uint32_t(i.NewEndIndex),
+		start_byte:    C.uint(i.StartIndex),
+		old_end_byte:  C.uint(i.OldEndIndex),
+		new_end_byte:  C.uint(i.NewEndIndex),
 		start_point:   i.StartPoint.c(),
 		old_end_point: i.OldEndPoint.c(),
 		new_end_point: i.NewEndPoint.c(),
@@ -131,17 +131,15 @@ func (t *BaseTree) close() {
 
 // RootNode returns root node of the syntax tree.
 func (t *Tree) RootNode() *Node {
-	ptr := C.ts_tree_root_node(t.c)
-	return t.cachedNode(ptr)
+	nn := C.ts_tree_root_node(t.c)
+	return t.cachedNode(nn)
 }
 
 // RootNodeWithOffset returns the root node of the syntax tree, but with its position
 // shifted forward by the given offset.
 func (t *Tree) RootNodeWithOffset(ofs uint32, extent Point) *Node {
-	ptr := C.ts_tree_root_node_with_offset(t.c, C.uint32_t(ofs),
-		C.TSPoint{row: C.uint32_t(extent.Row), column: C.uint32_t(extent.Column)})
-
-	return t.cachedNode(ptr)
+	nn := C.ts_tree_root_node_with_offset(t.c, C.uint32_t(ofs), extent.c())
+	return t.cachedNode(nn)
 }
 
 // Language returns the language that was used to parse the syntax tree.
@@ -153,7 +151,7 @@ func (t *Tree) Language() *Language {
 //
 // The returned pointer must be freed by the caller.
 func (t *Tree) IncludedRanges() []Range {
-	count := C.uint32_t(0)
+	count := C.uint(0)
 	// FIXME: Free this!
 	p := C.ts_tree_included_ranges(t.c, &count)
 
@@ -182,7 +180,7 @@ func (t *Tree) Edit(i InputEdit) {
 // for freeing it using `free`. The length of the array will be written to the
 // given `length` pointer.
 func (t *Tree) GetChangedRanges(other *Tree) []Range {
-	count := C.uint32_t(0)
+	count := C.uint(0)
 	// FIXME: Free this!
 	p := C.ts_tree_get_changed_ranges(t.c, other.c, &count)
 
@@ -196,7 +194,7 @@ func (t *Tree) PrintDotGraph(name string) (err error) {
 		return
 	}
 
-	C.ts_tree_print_dot_graph(t.c, C.int32_t(f.Fd()))
+	C.ts_tree_print_dot_graph(t.c, C.int(f.Fd()))
 
 	return f.Close()
 }
