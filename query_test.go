@@ -2,6 +2,7 @@ package sitter
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 )
@@ -9,45 +10,47 @@ import (
 func TestQueryWithPredicates(t *testing.T) {
 	t.Parallel()
 
+	//nolint:lll // ok
 	testCases := []struct {
 		msg, pattern string
-	}{
-		{"#match?: too few arguments", `((expression) @capture (#match? "this"))`},
-		{"#match?: too many arguments", `((expression) @capture (#match? a b "this"))`},
-		{"#match?: need a capture as first argument", `((expression) @capture (#match? "a" "this"))`},
-		{"#match?: need a string as second argument", `((expression) @capture (#match? @capture @capture))`},
-		{"#match?: success test", `((expression) @capture (#match? @capture "^[A-Z]"))`},
-		{"#not-match?: too few arguments", `((expression) @capture (#not-match? "this"))`},
-		{"#not-match?: too many arguments", `((expression) @capture (#not-match? a b "this"))`},
-		{"#not-match?: need a capture as first argument", `((expression) @capture (#not-match? "a" "this"))`},
-		{"#not-match?: need a string as second argument", `((expression) @capture (#not-match? @capture @capture))`},
-		{"#not-match?: success test", `((expression) @capture (#not-match? @capture "^[A-Z]"))`},
-		{"#eq?: too few arguments", `((expression) @capture (#eq? "this"))`},
-		{"#eq?: too many arguments", `((expression) @capture (#eq? a b "this"))`},
-		{"#eq?: need a capture as first argument", `((expression) @capture (#eq? "a" "this"))`},
-		{"#eq?: success test", `((expression) @capture (#eq? @capture "this"))`},
-		{"#eq?: success double predicate test", `((expression) @capture (#eq? @capture @capture) (#eq? @capture "this"))`},
-		{"#eq?: success test", `((expression) @capture (#eq? @capture @capture))`},
-		{"#not-eq?: too few arguments", `((expression) @capture (#not-eq? "this"))`},
-		{"#not-eq?: too many arguments", `((expression) @capture (#not-eq? a b "this"))`},
-		{"#not-eq?: need a capture as first argument", `((expression) @capture (#not-eq? "a" "this"))`},
-		{"#not-eq?: success test", `((expression) @capture (#not-eq? @capture "this"))`},
-		{"#not-eq?: success test", `((expression) @capture (#not-eq? @capture @capture))`},
-		{"#is?: too few arguments", `((expression) @capture (#is?))`},
-		{"#is?: too many arguments", `((expression) @capture (#is? a b "this"))`},
-		{"#is?: need a string as first argument", `((expression) @capture (#is? @capture "this"))`},
-		{"#is?: need a string as second argument", `((expression) @capture (#is? "this" @capture))`},
-		{"#is?: success test", `((expression) @capture (#is? "foo" "bar"))`},
-		{"#is-not?: too few arguments", `((expression) @capture (#is-not?))`},
-		{"#is-not?: too many arguments", `((expression) @capture (#is-not? a b "this"))`},
-		{"#is-not?: need a string as first argument", `((expression) @capture (#is-not? @capture "this"))`},
-		{"#is-not?: need a string as second argument", `((expression) @capture (#is-not? "this" @capture))`},
-		{"#is-not?: success test", `((expression) @capture (#is-not? "foo" "bar"))`},
-		{"#set!: too few arguments", `((expression) @capture (#set!))`},
-		{"#set!: too many arguments", `((expression) @capture (#set! a b "this"))`},
-		{"#set!: need a string as first argument", `((expression) @capture (#set! @capture "this"))`},
-		{"#set!: need a string as second argument", `((expression) @capture (#set! "this" @capture))`},
-		{"#set!: success test", `((expression) @capture (#set! "foo" "bar"))`},
+		exp          error
+	}{ // TODO: Also add cases for ErrPredicateWrongStart
+		{"#match?: too few arguments", `((expression) @capture (#match? "this"))`, ErrPredicateArgsWrongCount},
+		{"#match?: too many arguments", `((expression) @capture (#match? a b "this"))`, ErrPredicateArgsWrongCount},
+		{"#match?: need a capture as first argument", `((expression) @capture (#match? "a" "this"))`, ErrPredicateWrongType},
+		{"#match?: need a string as second argument", `((expression) @capture (#match? @capture @capture))`, ErrPredicateWrongType},
+		{"#match?: success test", `((expression) @capture (#match? @capture "^[A-Z]"))`, nil},
+		{"#not-match?: too few arguments", `((expression) @capture (#not-match? "this"))`, ErrPredicateArgsWrongCount},
+		{"#not-match?: too many arguments", `((expression) @capture (#not-match? a b "this"))`, ErrPredicateArgsWrongCount},
+		{"#not-match?: need a capture as first argument", `((expression) @capture (#not-match? "a" "this"))`, ErrPredicateWrongType},
+		{"#not-match?: need a string as second argument", `((expression) @capture (#not-match? @capture @capture))`, ErrPredicateWrongType},
+		{"#not-match?: success test", `((expression) @capture (#not-match? @capture "^[A-Z]"))`, nil},
+		{"#eq?: too few arguments", `((expression) @capture (#eq? "this"))`, ErrPredicateArgsWrongCount},
+		{"#eq?: too many arguments", `((expression) @capture (#eq? a b "this"))`, ErrPredicateArgsWrongCount},
+		{"#eq?: need a capture as first argument", `((expression) @capture (#eq? "a" "this"))`, ErrPredicateWrongType},
+		{"#eq?: success test", `((expression) @capture (#eq? @capture "this"))`, nil},
+		{"#eq?: success double predicate test", `((expression) @capture (#eq? @capture @capture) (#eq? @capture "this"))`, nil},
+		{"#eq?: success test", `((expression) @capture (#eq? @capture @capture))`, nil},
+		{"#not-eq?: too few arguments", `((expression) @capture (#not-eq? "this"))`, ErrPredicateArgsWrongCount},
+		{"#not-eq?: too many arguments", `((expression) @capture (#not-eq? a b "this"))`, ErrPredicateArgsWrongCount},
+		{"#not-eq?: need a capture as first argument", `((expression) @capture (#not-eq? "a" "this"))`, ErrPredicateWrongType},
+		{"#not-eq?: success test", `((expression) @capture (#not-eq? @capture "this"))`, nil},
+		{"#not-eq?: success test", `((expression) @capture (#not-eq? @capture @capture))`, nil},
+		{"#is?: too few arguments", `((expression) @capture (#is?))`, ErrPredicateArgsWrongCount},
+		{"#is?: too many arguments", `((expression) @capture (#is? a b "this"))`, ErrPredicateArgsWrongCount},
+		{"#is?: need a string as first argument", `((expression) @capture (#is? @capture "this"))`, ErrPredicateWrongType},
+		{"#is?: need a string as second argument", `((expression) @capture (#is? "this" @capture))`, ErrPredicateWrongType},
+		{"#is?: success test", `((expression) @capture (#is? "foo" "bar"))`, nil},
+		{"#is-not?: too few arguments", `((expression) @capture (#is-not?))`, ErrPredicateArgsWrongCount},
+		{"#is-not?: too many arguments", `((expression) @capture (#is-not? a b "this"))`, ErrPredicateArgsWrongCount},
+		{"#is-not?: need a string as first argument", `((expression) @capture (#is-not? @capture "this"))`, ErrPredicateWrongType},
+		{"#is-not?: need a string as second argument", `((expression) @capture (#is-not? "this" @capture))`, ErrPredicateWrongType},
+		{"#is-not?: success test", `((expression) @capture (#is-not? "foo" "bar"))`, nil},
+		{"#set!: too few arguments", `((expression) @capture (#set!))`, ErrPredicateArgsWrongCount},
+		{"#set!: too many arguments", `((expression) @capture (#set! a b "this"))`, ErrPredicateArgsWrongCount},
+		{"#set!: need a string as first argument", `((expression) @capture (#set! @capture "this"))`, ErrPredicateWrongType},
+		{"#set!: need a string as second argument", `((expression) @capture (#set! "this" @capture))`, ErrPredicateWrongType},
+		{"#set!: success test", `((expression) @capture (#set! "foo" "bar"))`, nil},
 	}
 
 	for _, tc := range testCases {
@@ -61,13 +64,11 @@ func TestQueryWithPredicates(t *testing.T) {
 				t.Fatal(tc.msg)
 			}
 
-			/* TODO: check the actual error message as well or at the very least,
-			   the error type.
-			if err != nil {
-				if x := err.Error(); x != tc.msg {
-					t.Fatalf("Expected error %q, got %q", tc.msg, x)
-				}
-			}*/
+			if !errors.Is(err, tc.exp) {
+				t.Fatalf("Expected %v, got %v", tc.exp, err)
+			}
+
+			// TODO: Also add tests for actual error message.
 
 			if (q == nil) && success {
 				t.Fatal(tc.msg)
