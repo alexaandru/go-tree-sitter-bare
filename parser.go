@@ -273,22 +273,22 @@ func (p *Parser) CancellationFlag() *uint64 {
 
 // Debug enables debug output to stderr.
 func (p *Parser) Debug() {
-	logger := C.stderr_logger_new(true)
+	p.SetLogger(C.stderr_logger_new(true))
+}
+
+// SetLogger sets the logger that a parser should use during parsing.
+//
+// The parser does not take ownership over the logger payload. If a logger was
+// previously assigned, the caller is responsible for releasing any memory
+// owned by the previous logger.
+func (p *Parser) SetLogger(logger C.TSLogger) {
 	C.ts_parser_set_logger(p.c, logger)
 }
 
-/** TODO
- * Set the logger that a parser should use during parsing.
- *
- * The parser does not take ownership over the logger payload. If a logger was
- * previously assigned, the caller is responsible for releasing any memory
- * owned by the previous logger.
- /
-void ts_parser_set_logger(TSParser *self, TSLogger logger);
-
- * Get the parser's current logger.
-TSLogger ts_parser_logger(const TSParser *self);
-*/
+// Logger returns the parser's current logger.
+func (p *Parser) Logger() C.TSLogger {
+	return C.ts_parser_logger(p.c)
+}
 
 // PrintDotGraphs can be used to write debugging graphs during parsing.
 //

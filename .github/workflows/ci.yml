@@ -15,10 +15,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - run: |
-          make test
-          # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions
-          echo "::notice title=Unit Test Coverage::$(go tool cover -func=unit.cov|tail -n1|tr -s "\t")"
+      - run: make test
+        # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions
+      - run: echo "::notice title=Unit Test Coverage::$(go tool cover -func=unit.cov|tail -n1|tr -s "\t")"
   lint:
     runs-on: ubuntu-latest
     name: Lint
@@ -27,5 +26,10 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: Lint
-        run: make lint
+      - run: make lint
+  api:
+    runs-on: ubuntu-latest
+    name: API Check
+    steps:
+      - uses: actions/checkout@v4
+      - run: make check_unimplemented

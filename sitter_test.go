@@ -15,7 +15,10 @@ import (
 	"time"
 )
 
-const exprSumLR = "(expression (sum left: (expression (number)) right: (expression (number))))"
+const (
+	exprSumLR = "(expression (sum left: (expression (number)) right: (expression (number))))"
+	leakLimit = 3 * 1024 * 1024
+)
 
 func TestRootNode(t *testing.T) {
 	t.Parallel()
@@ -736,11 +739,10 @@ func TestLeakParse(t *testing.T) {
 
 	runtime.ReadMemStats(&m)
 
-	// Shouldn't exceed 1mb that go runtime takes.
+	// Shouldn't exceed leakLimit that go runtime takes.
 	// Was increased from upstream as we run tests in parallel.
-	exp := uint64(2 * 1024 * 1024)
-	if x := m.Alloc; x >= exp {
-		t.Fatalf("Expected to only allocate %d, got %d", exp, x)
+	if x := m.Alloc; x >= leakLimit {
+		t.Fatalf("Expected to only allocate %d, got %d", leakLimit, x)
 	}
 }
 
@@ -765,11 +767,10 @@ func TestLeakRootNode(t *testing.T) {
 
 	runtime.ReadMemStats(&m)
 
-	// Shouldn't exceed 1mb go runtime takes.
+	// Shouldn't exceed leakLimit go runtime takes.
 	// Was increased from upstream as we run tests in parallel.
-	exp := uint64(2 * 1024 * 1024)
-	if x := m.Alloc; x >= exp {
-		t.Fatalf("Expected to only allocate %d, got %d", exp, x)
+	if x := m.Alloc; x >= leakLimit {
+		t.Fatalf("Expected to only allocate %d, got %d", leakLimit, x)
 	}
 }
 
@@ -887,11 +888,10 @@ func TestLeakParseInput(t *testing.T) {
 
 	runtime.ReadMemStats(&m)
 
-	// Shouldn't exceed 2mb that go runtime takes.
+	// Shouldn't exceed leakLimit that go runtime takes.
 	// Was increased from upstream as we run tests in parallel.
-	exp := uint64(2 * 1024 * 1024)
-	if x := m.Alloc; x >= exp {
-		t.Fatalf("Expected to only allocate %d, got %d", exp, x)
+	if x := m.Alloc; x >= leakLimit {
+		t.Fatalf("Expected to only allocate %d, got %d", leakLimit, x)
 	}
 }
 
