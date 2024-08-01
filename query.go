@@ -492,26 +492,26 @@ func (qc *QueryCursor) RemoveMatch(matchID uint32) {
 //
 // If there is a capture, write its match to `*match` and its index within
 // the matche's capture list to `*capture_index`. Otherwise, return `false`.
-func (qc *QueryCursor) NextCapture() (*QueryMatch, uint32, bool) {
+func (qc *QueryCursor) NextCapture() (qm *QueryMatch, idx uint32, ok bool) {
 	var (
 		cqm          C.TSQueryMatch
 		captureIndex C.uint32_t
 	)
 
-	if ok := C.ts_query_cursor_next_capture(qc.c, &cqm, &captureIndex); !bool(ok) { //nolint:gocritic // ok
-		return nil, 0, false
+	if ok = bool(C.ts_query_cursor_next_capture(qc.c, &cqm, &captureIndex)); !ok { //nolint:gocritic // ok
+		return
 	}
 
-	qm := &QueryMatch{
+	qm = &QueryMatch{
 		ID:           uint32(cqm.id),
 		PatternIndex: uint16(cqm.pattern_index),
 	}
 
 	cqc := unsafe.Slice(cqm.captures, int(cqm.capture_count))
 	for _, c := range cqc {
-		idx := uint32(c.index)
+		idx2 := uint32(c.index)
 		node := qc.t.cachedNode(c.node)
-		qm.Captures = append(qm.Captures, QueryCapture{Index: idx, Node: node})
+		qm.Captures = append(qm.Captures, QueryCapture{Index: idx2, Node: node})
 	}
 
 	return qm, uint32(captureIndex), true
@@ -555,12 +555,13 @@ func (qc *QueryCursor) FilterPredicates(m *QueryMatch, input []byte) *QueryMatch
 
 	// check each predicate against the match
 	for _, steps := range predicates {
-		operator := q.StringValueForID(steps[0].ValueID)
+		if len(steps) == 0 {
+			continue
+		}
 
-		switch operator {
+		switch op := q.StringValueForID(steps[0].ValueID); op {
 		case "eq?", "not-eq?":
-			isPositive := operator == "eq?"
-
+			isPositive := op == "eq?"
 			expectedCaptureNameLeft := q.CaptureNameForID(steps[1].ValueID)
 
 			if steps[2].Type == QueryPredicateStepTypeCapture {
@@ -604,12 +605,8 @@ func (qc *QueryCursor) FilterPredicates(m *QueryMatch, input []byte) *QueryMatch
 					}
 				}
 			}
-
-			if !matchedAll {
-				break //nolint:staticcheck // TODO: This is an ineffective break statement. Is it a bug or just superfluous?
-			}
 		case "match?", "not-match?":
-			isPositive := operator == "match?"
+			isPositive := op == "match?"
 
 			expectedCaptureName := q.CaptureNameForID(steps[1].ValueID)
 			regex := regexp.MustCompile(q.StringValueForID(steps[2].ValueID))
@@ -625,6 +622,10 @@ func (qc *QueryCursor) FilterPredicates(m *QueryMatch, input []byte) *QueryMatch
 					break
 				}
 			}
+		}
+
+		if !matchedAll {
+			break
 		}
 	}
 
