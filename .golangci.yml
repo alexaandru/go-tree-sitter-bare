@@ -177,21 +177,20 @@ linters:
     - bodyclose
     - canonicalheader
     - containedctx
-    #- contextcheck
-    #- copyloopvar # NOT needed post 1.22.0
-    #- cyclop
+    - contextcheck
+    - copyloopvar # NOT needed post 1.22.0
+    - cyclop
     - decorder
-    #- depguard
+    - depguard
     - dogsled
-    #- dupl
+    - dupl
     - dupword
     - durationcheck
-    #- err113
+    - err113
     - errcheck # default
     - errchkjson
     - errname
     - errorlint
-    #- execinquery # DEPRECATED
     - exhaustive
     #- exhaustruct
     - exportloopref
@@ -202,8 +201,8 @@ linters:
     #- gci # we use gofumpt
     - ginkgolinter
     - gocheckcompilerdirectives
-    #- gochecknoglobals # we want some globals for now, but we should reduce them to bare minimum
-    #- gochecknoinits # we want init()s for now
+    - gochecknoglobals # we want some globals for now, but we should reduce them to bare minimum
+    - gochecknoinits # we want init()s for now
     - gochecksumtype
     - gocognit
     - goconst
@@ -213,7 +212,7 @@ linters:
     #- godox
     - gofmt
     - gofumpt
-    #- goheader
+    - goheader
     - goimports
     - gomoddirectives
     - gomodguard
@@ -229,16 +228,16 @@ linters:
     - interfacebloat
     - intrange
     - ireturn
-    #- lll
+    - lll
     - loggercheck
-    #- maintidx
+    - maintidx
     - makezero
     - mirror
     - misspell
-    #- mnd
-    #- musttag
-    #- nakedret
-    #- nestif
+    - mnd
+    - musttag
+    - nakedret
+    - nestif
     - nilerr
     - nilnil
     - nlreturn
@@ -246,7 +245,7 @@ linters:
     - nolintlint
     #- nonamedreturns # we want named returns
     - nosprintfhostport
-    #- paralleltest
+    - paralleltest
     - perfsprint
     - prealloc
     - predeclared
@@ -256,15 +255,15 @@ linters:
     - revive
     - rowserrcheck
     - sloglint
-    # - spancheck # we don't use Open Telemetry
+    - spancheck
     - sqlclosecheck
     - staticcheck # default
     - stylecheck
     - tagalign
-    #- tagliatelle
+    - tagliatelle
     - tenv
     - testableexamples
-    #- testifylint # we don't use testify
+    - testifylint
     #- testpackage
     - thelper
     - tparallel
@@ -276,7 +275,7 @@ linters:
     - varnamelen
     - wastedassign
     - whitespace
-    #- wrapcheck
+    - wrapcheck
     - wsl
     #- zerologlint # we don't use it
 issues:

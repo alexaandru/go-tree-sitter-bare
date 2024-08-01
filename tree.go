@@ -4,6 +4,7 @@ package sitter
 import "C"
 
 import (
+	"fmt"
 	"os"
 	"runtime"
 	"sync"
@@ -196,7 +197,11 @@ func (t *Tree) PrintDotGraph(name string) (err error) {
 
 	C.ts_tree_print_dot_graph(t.c, C.int(f.Fd()))
 
-	return f.Close()
+	if err = f.Close(); err != nil {
+		err = fmt.Errorf("cannot save dot file: %w", err)
+	}
+
+	return
 }
 
 func (t *Tree) cachedNode(ptr C.TSNode) (n *Node) {

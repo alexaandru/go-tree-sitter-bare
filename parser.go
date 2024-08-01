@@ -6,6 +6,7 @@ import "C"
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"runtime"
 	"sync"
@@ -48,6 +49,7 @@ type ReadFunc func(offset uint32, position Point) []byte
 // keeps callbacks for parser.parse method
 type readFuncsMap struct {
 	funcs map[int]ReadFunc
+	index int
 	sync.RWMutex
 }
 
@@ -58,7 +60,7 @@ const (
 )
 
 // Maintain a map of read functions that can be called from C.
-var readFuncs = &readFuncsMap{funcs: map[int]ReadFunc{}}
+var readFuncs = &readFuncsMap{funcs: map[int]ReadFunc{}} //nolint:gochecknoglobals // ok
 
 // Possible error types.
 var (
@@ -301,10 +303,14 @@ func (p *Parser) PrintDotGraphs(name string) (err error) {
 
 	C.ts_parser_print_dot_graphs(p.c, C.int(f.Fd()))
 
-	return f.Close()
+	if err = f.Close(); err != nil {
+		err = fmt.Errorf("cannot save dot file: %w", err)
+	}
+
+	return
 }
 
-// convertTSTree converts the tree-sitter response into a *Tree or an error.
+// converts the tree-sitter response into a *Tree or an error.
 //
 // tree-sitter can fail for 3 reasons:
 // - cancelation
@@ -312,15 +318,15 @@ func (p *Parser) PrintDotGraphs(name string) (err error) {
 // - no language set
 //
 // We check for all those conditions if there return value is nil.
-// see: https://github.com/tree-sitter/tree-sitter/blob/7890a29db0b186b7b21a0a95d99fa6c562b8316b/lib/include/tree_sitter/api.h#L209-L246
-func (p *Parser) convertTSTree(ctx context.Context, tsTree *C.TSTree) (*Tree, error) {
+// See `Parse()` comment for further details.
+func (p *Parser) convertTSTree(ctx context.Context, tsTree *C.TSTree) (t *Tree, err error) {
 	if tsTree == nil {
-		if ctx.Err() != nil {
+		if err = ctx.Err(); err != nil {
 			// reset cancellation flag so the parse can be re-used
 			atomic.StoreUint64(p.cancel, 0)
 
 			// context cancellation caused a timeout, return that error
-			return nil, ctx.Err()
+			return nil, fmt.Errorf("failed converting TSTree -> Tree: %w", err)
 		}
 
 		if p.Language() == nil {
@@ -337,7 +343,9 @@ func (m *readFuncsMap) register(f ReadFunc) (id int) {
 	m.Lock()
 	defer m.Unlock()
 
-	id = len(m.funcs)
+	m.index++
+
+	id = m.index
 	m.funcs[id] = f
 
 	return

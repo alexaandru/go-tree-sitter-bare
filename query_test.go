@@ -10,8 +10,7 @@ func TestQueryWithPredicates(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		msg,
-		pattern string
+		msg, pattern string
 	}{
 		{"#match?: too few arguments", `((expression) @capture (#match? "this"))`},
 		{"#match?: too many arguments", `((expression) @capture (#match? a b "this"))`},
@@ -62,6 +61,14 @@ func TestQueryWithPredicates(t *testing.T) {
 				t.Fatal(tc.msg)
 			}
 
+			/* TODO: check the actual error message as well or at the very least,
+			   the error type.
+			if err != nil {
+				if x := err.Error(); x != tc.msg {
+					t.Fatalf("Expected error %q, got %q", tc.msg, x)
+				}
+			}*/
+
 			if (q == nil) && success {
 				t.Fatal(tc.msg)
 			}
@@ -74,10 +81,8 @@ func TestFilterPredicates(t *testing.T) {
 
 	sumLR := `((sum left: (expression (number) @left) right: (expression (number) @right))`
 	testCases := []struct {
-		input,
-		query string
-		expBefore,
-		expAfter int
+		input, query        string
+		expBefore, expAfter int
 	}{
 		{`// foo`, `((comment) @capture (#match? @capture "^// [a-z]+$"))`, 1, 1},
 		{`// foo123`, `((comment) @capture (#match? @capture "^// [a-z]+$"))`, 1, 0},

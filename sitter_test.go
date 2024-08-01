@@ -18,6 +18,8 @@ import (
 const exprSumLR = "(expression (sum left: (expression (number)) right: (expression (number))))"
 
 func TestRootNode(t *testing.T) {
+	t.Parallel()
+
 	n, err := Parse(context.Background(), []byte("1 + 2"), getTestGrammar())
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
@@ -68,6 +70,8 @@ func TestRootNode(t *testing.T) {
 		name := nameOf(fn)
 
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
 			if x := fn(); x != nil {
 				t.Fatalf("Expected n.%s() == nil, got %v", name, x)
 			}
@@ -88,6 +92,8 @@ func TestRootNode(t *testing.T) {
 }
 
 func TestTree(t *testing.T) {
+	t.Parallel()
+
 	parser := NewParser()
 	parser.Debug()
 	parser.SetLanguage(getTestGrammar())
@@ -198,6 +204,8 @@ func TestTree(t *testing.T) {
 
 // TODO: Refactor this, it's very hard to follow.
 func TestErrorNodes(t *testing.T) {
+	t.Parallel()
+
 	parser := NewParser()
 
 	parser.Debug()
@@ -289,6 +297,8 @@ func TestErrorNodes(t *testing.T) {
 }
 
 func TestLanguage(t *testing.T) {
+	t.Parallel()
+
 	js := getTestGrammar()
 
 	exp := uint32(9)
@@ -320,6 +330,8 @@ func TestLanguage(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run("", func(t *testing.T) {
+			t.Parallel()
+
 			symName := js.SymbolName(Symbol(tc.n))
 			if symName != tc.expName {
 				t.Fatalf("Expected symbol name %q got %q for %d", tc.expName, symName, tc.n)
@@ -334,6 +346,8 @@ func TestLanguage(t *testing.T) {
 }
 
 func TestGC(t *testing.T) {
+	t.Parallel()
+
 	parser := NewParser()
 	parser.SetLanguage(getTestGrammar())
 
@@ -349,6 +363,8 @@ func TestGC(t *testing.T) {
 }
 
 func TestSetOperationLimit(t *testing.T) {
+	t.Parallel()
+
 	parser := NewParser()
 	if x := parser.TimeoutMicros(); x != 0 {
 		t.Fatalf("Expected parser.OperationLimit() == 0, got %d", x)
@@ -362,6 +378,8 @@ func TestSetOperationLimit(t *testing.T) {
 }
 
 func TestOperationLimitParsing(t *testing.T) {
+	t.Parallel()
+
 	parser := NewParser()
 	parser.SetTimeoutMicros(10)
 	parser.SetLanguage(getTestGrammar())
@@ -385,6 +403,8 @@ func TestOperationLimitParsing(t *testing.T) {
 }
 
 func TestContextCancellationParsing(t *testing.T) {
+	t.Parallel()
+
 	parser := NewParser()
 	parser.SetLanguage(getTestGrammar())
 
@@ -446,6 +466,8 @@ func TestContextCancellationParsing(t *testing.T) {
 }
 
 func TestIncludedRanges(t *testing.T) {
+	t.Parallel()
+
 	// sum code with sum code in a comment
 	code := "1 + 2\n//3 + 5"
 
@@ -492,6 +514,8 @@ func TestIncludedRanges(t *testing.T) {
 }
 
 func TestSameNode(t *testing.T) {
+	t.Parallel()
+
 	parser := NewParser()
 	parser.SetLanguage(getTestGrammar())
 
@@ -514,6 +538,8 @@ func TestSameNode(t *testing.T) {
 }
 
 func TestQuery(t *testing.T) {
+	t.Parallel()
+
 	js := "1 + 2"
 
 	// test single capture
@@ -564,6 +590,8 @@ func TestQuery(t *testing.T) {
 }
 
 func TestQueryError(t *testing.T) {
+	t.Parallel()
+
 	q, err := NewQuery([]byte("((unknown) name: (identifier))"), getTestGrammar())
 	if q != nil {
 		t.Fatal("Expected q to be nil, got", q)
@@ -573,13 +601,19 @@ func TestQueryError(t *testing.T) {
 		t.Fatal("Expected error to not be nil")
 	}
 
-	exp := DetailedQueryError{Offset: 2, Type: QueryErrorNodeType, Message: "invalid node type 'unknown' at line 1 column 0"}
+	exp := DetailedQueryError{
+		Offset:  2,
+		Type:    QueryErrorNodeType,
+		Message: "invalid node type 'unknown' at line 1 column 0",
+	}
 	if err.Error() != exp.Error() {
 		t.Fatal("Error is not the expected QueryError:", err)
 	}
 }
 
 func TestParserLifetime(t *testing.T) {
+	t.Parallel()
+
 	n, wg := 10, new(sync.WaitGroup)
 	errs := make([]error, n*n)
 
@@ -618,7 +652,9 @@ func TestParserLifetime(t *testing.T) {
 	}
 }
 
-func TestTreeCursor(t *testing.T) {
+func TestTreeCursor(t *testing.T) { //nolint:tparallel // we test a specific navigation sequence
+	t.Parallel()
+
 	input := []byte(`1 + 2`)
 
 	root, err := Parse(context.Background(), input, getTestGrammar())
@@ -665,7 +701,7 @@ func TestTreeCursor(t *testing.T) {
 		{c.GoToParent, false, "sum", ""},
 	}
 
-	for _, tc := range testCases {
+	for _, tc := range testCases { //nolint:paralleltest // not applicable, see function level comment
 		label := nameOf(tc.fn)
 
 		t.Run(label, func(t *testing.T) {
@@ -685,6 +721,8 @@ func TestTreeCursor(t *testing.T) {
 }
 
 func TestLeakParse(t *testing.T) {
+	t.Parallel()
+
 	parser := NewParser()
 	parser.SetLanguage(getTestGrammar())
 
@@ -698,14 +736,17 @@ func TestLeakParse(t *testing.T) {
 
 	runtime.ReadMemStats(&m)
 
-	// shouldn't exceed 1mb that go runtime takes
-	exp := uint64(1024 * 1024)
+	// Shouldn't exceed 1mb that go runtime takes.
+	// Was increased from upstream as we run tests in parallel.
+	exp := uint64(2 * 1024 * 1024)
 	if x := m.Alloc; x >= exp {
 		t.Fatalf("Expected to only allocate %d, got %d", exp, x)
 	}
 }
 
 func TestLeakRootNode(t *testing.T) {
+	t.Parallel()
+
 	parser := NewParser()
 	parser.SetLanguage(getTestGrammar())
 
@@ -724,14 +765,17 @@ func TestLeakRootNode(t *testing.T) {
 
 	runtime.ReadMemStats(&m)
 
-	// shouldn't exceed 1mb go runtime takes
-	exp := uint64(1024 * 1024)
+	// Shouldn't exceed 1mb go runtime takes.
+	// Was increased from upstream as we run tests in parallel.
+	exp := uint64(2 * 1024 * 1024)
 	if x := m.Alloc; x >= exp {
 		t.Fatalf("Expected to only allocate %d, got %d", exp, x)
 	}
 }
 
 func TestParseInput(t *testing.T) {
+	t.Parallel()
+
 	parser := NewParser()
 	parser.SetLanguage(getTestGrammar())
 
@@ -814,6 +858,8 @@ func TestParseInput(t *testing.T) {
 }
 
 func TestLeakParseInput(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	parser := NewParser()
@@ -841,8 +887,9 @@ func TestLeakParseInput(t *testing.T) {
 
 	runtime.ReadMemStats(&m)
 
-	// shouldn't exceed 1mb that go runtime takes
-	exp := uint64(1024 * 1024)
+	// Shouldn't exceed 2mb that go runtime takes.
+	// Was increased from upstream as we run tests in parallel.
+	exp := uint64(2 * 1024 * 1024)
 	if x := m.Alloc; x >= exp {
 		t.Fatalf("Expected to only allocate %d, got %d", exp, x)
 	}
@@ -850,6 +897,8 @@ func TestLeakParseInput(t *testing.T) {
 
 // see https://github.com/smacker/go-tree-sitter/issues/75
 func TestCursorKeepsQuery(t *testing.T) {
+	t.Parallel()
+
 	source := bytes.Repeat([]byte("1 + 1"), 10000)
 
 	parser := NewParser()
@@ -882,6 +931,8 @@ func TestCursorKeepsQuery(t *testing.T) {
 }
 
 func TestNodeChildContainingDescendant(t *testing.T) {
+	t.Parallel()
+
 	input := []byte(`1 + 2`)
 
 	root, err := Parse(context.Background(), input, getTestGrammar())
@@ -981,7 +1032,7 @@ func BenchmarkParseInput(b *testing.B) {
 	}
 }
 
-func testStartEnd(t *testing.T, n *Node, startByte, endByte, startPointCol, startPointRow, endPointRow, endPointCol uint32) {
+func testStartEnd(t *testing.T, n *Node, startByte, endByte, startCol, startRow, endRow, endCol uint32) {
 	t.Helper()
 
 	if x := n.StartByte(); x != startByte {
@@ -992,12 +1043,12 @@ func testStartEnd(t *testing.T, n *Node, startByte, endByte, startPointCol, star
 		t.Fatalf("Expected EndByte to be %d, got %d", endByte, x)
 	}
 
-	expPoint := Point{Column: startPointCol, Row: startPointRow}
+	expPoint := Point{Column: startCol, Row: startRow}
 	if x := n.StartPoint(); x != expPoint {
 		t.Fatalf("Expected StartPoint to be %v, got %v", expPoint, x)
 	}
 
-	expPoint = Point{Column: endPointCol, Row: endPointRow}
+	expPoint = Point{Column: endCol, Row: endRow}
 	if x := n.EndPoint(); x != expPoint {
 		t.Fatalf("Expected EndPoint to be %v, got %v", expPoint, x)
 	}

@@ -23,7 +23,7 @@ const (
 	SymbolTypeAuxiliary Symbol = C.TSSymbolTypeAuxiliary
 )
 
-var symbolTypeNames = []string{"Regular", "Anonymous", "Auxiliary"}
+var symbolTypeNames = []string{"Regular", "Anonymous", "Auxiliary"} //nolint:gochecknoglobals // ok
 
 func (t Symbol) String() string {
 	return symbolTypeNames[t]

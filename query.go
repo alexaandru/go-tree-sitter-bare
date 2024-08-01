@@ -4,6 +4,7 @@ package sitter
 import "C"
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"regexp"
@@ -48,6 +49,9 @@ type QueryPredicateStep struct {
 	ValueID uint32
 }
 
+// QueryPredicateSteps holds all the steps for a predicate.
+type QueryPredicateSteps []QueryPredicateStep
+
 // QueryError indicates the type of QueryError.
 type QueryError = C.TSQueryError
 
@@ -90,6 +94,13 @@ const (
 // UnlimitedMaxDepth is used for turning off max depth limit for query cursor.
 const UnlimitedMaxDepth = uint32(C.UINT32_MAX)
 
+// Query related errors.
+var (
+	ErrPredicateArgsWrongCount = errors.New("wrong number of arguments")
+	ErrPredicateWrongStart     = errors.New("predicate must begin with a literal value")
+	ErrPredicateWrongType      = errors.New("predicate must be a")
+)
+
 // NewQuery creates a new query from a string containing one or more S-expression
 // patterns. The query is associated with a particular language, and can
 // only be run on syntax nodes parsed with that language.
@@ -99,7 +110,7 @@ const UnlimitedMaxDepth = uint32(C.UINT32_MAX)
 // of information about the problem:
 //  1. The byte offset of the error is written to the `error_offset` parameter.
 //  2. The type of error is written to the `error_type` parameter.
-func NewQuery(pattern []byte, lang *Language) (q *Query, err error) { //nolint:funlen,gocognit // ok
+func NewQuery(pattern []byte, lang *Language) (q *Query, err error) { //nolint:funlen,cyclop // TODO
 	var (
 		erroff  C.uint
 		errtype C.TSQueryError
@@ -171,6 +182,7 @@ func NewQuery(pattern []byte, lang *Language) (q *Query, err error) { //nolint:f
 	}
 
 	q = &Query{c: c}
+	id2str := q.StringValueForID
 
 	// Copied from: https://github.com/klothoplatform/go-tree-sitter/commit/e351b20167b26d515627a4a1a884528ede5fef79
 	// this is just used for syntax validation - it does not actually filter anything
@@ -181,49 +193,35 @@ func NewQuery(pattern []byte, lang *Language) (q *Query, err error) { //nolint:f
 			}
 
 			if steps[0].Type != QueryPredicateStepTypeString {
-				return nil, errors.New("predicate must begin with a literal value")
+				return nil, ErrPredicateWrongStart
 			}
 
-			switch operator := q.StringValueForID(steps[0].ValueID); operator {
+			var err1, err2, err3 error
+
+			//nolint:mnd // ok
+			switch op := q.StringValueForID(steps[0].ValueID); op {
 			case "eq?", "not-eq?":
-				if len(steps) != 4 {
-					return nil, fmt.Errorf("wrong number of arguments to `#%s` predicate. Expected 2, got %d", operator, len(steps)-2)
-				}
-
-				if steps[1].Type != QueryPredicateStepTypeCapture {
-					return nil, fmt.Errorf("first argument of `#%s` predicate must be a capture. Got %s", operator, q.StringValueForID(steps[1].ValueID))
-				}
+				err1 = steps.assertCount(op, 4)
+				err2 = steps.assertStepType(op, 1, QueryPredicateStepTypeCapture, id2str)
 			case "match?", "not-match?":
-				if len(steps) != 4 {
-					return nil, fmt.Errorf("wrong number of arguments to `#%s` predicate. Expected 2, got %d", operator, len(steps)-2)
-				}
-
-				if steps[1].Type != QueryPredicateStepTypeCapture {
-					return nil, fmt.Errorf("first argument of `#%s` predicate must be a capture. Got %s", operator, q.StringValueForID(steps[1].ValueID))
-				}
-
-				if steps[2].Type != QueryPredicateStepTypeString {
-					return nil, fmt.Errorf("second argument of `#%s` predicate must be a string. Got %s", operator, q.StringValueForID(steps[2].ValueID))
-				}
+				err1 = steps.assertCount(op, 4)
+				err2 = steps.assertStepType(op, 1, QueryPredicateStepTypeCapture, id2str)
+				err3 = steps.assertStepType(op, 2, QueryPredicateStepTypeString, id2str)
 			case "set!", "is?", "is-not?":
-				if len(steps) < 3 || len(steps) > 4 {
-					return nil, fmt.Errorf("wrong number of arguments to `#%s` predicate. Expected 1 or 2, got %d", operator, len(steps)-2)
-				}
+				err1 = steps.assertCount(op, 3, 4)
+				err2 = steps.assertStepType(op, 1, QueryPredicateStepTypeString, id2str)
+				err3 = steps.assertStepType(op, 2, QueryPredicateStepTypeString, id2str)
+			}
 
-				if steps[1].Type != QueryPredicateStepTypeString {
-					return nil, fmt.Errorf("first argument of `#%s` predicate must be a string. Got %s", operator, q.StringValueForID(steps[1].ValueID))
-				}
-
-				if len(steps) > 2 && steps[2].Type != QueryPredicateStepTypeString {
-					return nil, fmt.Errorf("second argument of `#%s` predicate must be a string. Got %s", operator, q.StringValueForID(steps[2].ValueID))
-				}
+			if err = cmp.Or(err1, err2, err3); err != nil { //nolint:gocritic // ok
+				return //nolint:nakedret // ok
 			}
 		}
 	}
 
 	runtime.SetFinalizer(q, (*Query).close)
 
-	return
+	return //nolint:nakedret // ok
 }
 
 func (err QueryError) String() string {
@@ -289,10 +287,10 @@ func (q *Query) StartByteForPattern(patIdx uint32) uint32 {
 //   - `TSQueryPredicateStepTypeDone` - Steps with this type are *sentinels*
 //     that represent the end of an individual predicate. If a pattern has two
 //     predicates, then there will be two steps with this `type` in the array.
-func (q *Query) PredicatesForPattern(patternIndex uint32) [][]QueryPredicateStep {
+func (q *Query) PredicatesForPattern(patternIndex uint32) []QueryPredicateSteps {
 	var ( //nolint:prealloc // no
 		length         C.uint
-		predicateSteps []QueryPredicateStep
+		predicateSteps QueryPredicateSteps
 	)
 
 	cPredicateStep := C.ts_query_predicates_for_pattern(q.c, C.uint(patternIndex), &length)
@@ -304,7 +302,7 @@ func (q *Query) PredicatesForPattern(patternIndex uint32) [][]QueryPredicateStep
 		predicateSteps = append(predicateSteps, QueryPredicateStep{stepType, valueID})
 	}
 
-	return splitPredicates(predicateSteps)
+	return predicateSteps.split()
 }
 
 // IsPatternRooted checks if the given pattern in the query has a single root node.
@@ -531,7 +529,7 @@ func (c *QueryCursor) SetMaxStartDepth(maxStartDepth uint32) {
 // Non API.
 
 // FilterPredicates filters the given query match with the applicable predicates.
-func (c *QueryCursor) FilterPredicates(m *QueryMatch, input []byte) (qm *QueryMatch) { //nolint:funlen,gocognit // ok
+func (c *QueryCursor) FilterPredicates(m *QueryMatch, input []byte) (qm *QueryMatch) { //nolint:funlen,gocognit,cyclop,lll // TODO
 	qm = &QueryMatch{ID: m.ID, PatternIndex: m.PatternIndex}
 
 	predicates := c.q.PredicatesForPattern(uint32(qm.PatternIndex))
@@ -554,7 +552,7 @@ func (c *QueryCursor) FilterPredicates(m *QueryMatch, input []byte) (qm *QueryMa
 			isPositive := op == "eq?"
 			expectedCaptureNameLeft := c.q.CaptureNameForID(steps[1].ValueID)
 
-			if steps[2].Type == QueryPredicateStepTypeCapture {
+			if steps[2].Type == QueryPredicateStepTypeCapture { //nolint:nestif // ok
 				expectedCaptureNameRight := c.q.CaptureNameForID(steps[2].ValueID)
 
 				var nodeLeft, nodeRight *Node
@@ -621,7 +619,7 @@ func (c *QueryCursor) FilterPredicates(m *QueryMatch, input []byte) (qm *QueryMa
 		qm.Captures = append(qm.Captures, m.Captures...)
 	}
 
-	return
+	return //nolint:nakedret // ok
 }
 
 func (err *DetailedQueryError) Error() string {
@@ -630,15 +628,64 @@ func (err *DetailedQueryError) Error() string {
 
 // Copied From: https://github.com/klothoplatform/go-tree-sitter/commit/e351b20167b26d515627a4a1a884528ede5fef79
 
-func splitPredicates(steps []QueryPredicateStep) (predicateSteps [][]QueryPredicateStep) {
-	currentSteps := make([]QueryPredicateStep, 0, len(steps))
+func (steps QueryPredicateSteps) split() (out []QueryPredicateSteps) {
+	currentSteps := make(QueryPredicateSteps, 0, len(steps))
 
 	for _, step := range steps {
 		currentSteps = append(currentSteps, step)
 		if step.Type == QueryPredicateStepTypeDone {
-			predicateSteps = append(predicateSteps, currentSteps)
-			currentSteps = []QueryPredicateStep{}
+			out = append(out, currentSteps)
+			currentSteps = QueryPredicateSteps{}
 		}
+	}
+
+	return
+}
+
+func (steps QueryPredicateSteps) assertCount(op string, expCount int, opts ...int) (err error) {
+	switch len(opts) {
+	case 0:
+		if x := len(steps); x != expCount {
+			err = fmt.Errorf("%w to `#%s` predicate. Expected %d, got %d",
+				ErrPredicateArgsWrongCount, op, expCount-2, x-2) //nolint:mnd // ok
+		}
+	default:
+		expMax := opts[0]
+		if x := len(steps); x < expCount || x > expMax {
+			err = fmt.Errorf("%w to `#%s` predicate. Expected %d or %d, got %d",
+				ErrPredicateArgsWrongCount, op, expCount-2, expMax-2, x-2) //nolint:mnd // ok
+		}
+	}
+
+	return
+}
+
+func (steps QueryPredicateSteps) assertStepType(op string, step int, expType C.TSQueryPredicateStepType, valueFn func(uint32) string) (err error) { //nolint:lll // ok
+	// Only validate step if exists, to account for optional steps.
+	if step >= len(steps) {
+		return
+	}
+
+	ss := "first"
+	if step > 1 {
+		// TODO: handler bigger step numbers.
+		ss = "second"
+	}
+
+	sstep := "unknown"
+
+	switch expType {
+	case QueryPredicateStepTypeDone:
+		sstep = "done"
+	case QueryPredicateStepTypeCapture:
+		sstep = "capture"
+	case QueryPredicateStepTypeString:
+		sstep = "string"
+	}
+
+	if steps[step].Type != expType {
+		err = fmt.Errorf("%s argument of `#%s` %w %s. Got %s",
+			ss, op, ErrPredicateWrongType, sstep, valueFn(steps[step].ValueID))
 	}
 
 	return
