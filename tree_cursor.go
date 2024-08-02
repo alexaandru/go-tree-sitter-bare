@@ -23,8 +23,11 @@ type TreeCursor struct {
 // possible using the [`TSNode`] functions. It is a mutable object that is always
 // on a certain syntax node, and can be moved imperatively to different nodes.
 func NewTreeCursor(n *Node) (c *TreeCursor) {
-	cc := C.ts_tree_cursor_new(n.c)
-	c = &TreeCursor{c: &cc, t: n.t}
+	return newTreeCursor(n.t, C.ts_tree_cursor_new(n.c))
+}
+
+func newTreeCursor(t *Tree, cc C.struct_TSTreeCursor) (c *TreeCursor) {
+	c = &TreeCursor{c: &cc, t: t}
 
 	runtime.SetFinalizer(c, (*TreeCursor).close)
 
@@ -164,6 +167,5 @@ func (c *TreeCursor) GoToFirstChildForPoint(p Point) int64 {
 
 // Copy returns a copy of the tree cursor.
 func (c *TreeCursor) Copy() *TreeCursor {
-	cc := C.ts_tree_cursor_copy(c.c)
-	return &TreeCursor{c: &cc, t: c.t.Copy()}
+	return newTreeCursor(c.t, C.ts_tree_cursor_copy(c.c))
 }

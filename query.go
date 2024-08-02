@@ -381,6 +381,10 @@ func NewQueryCursor() *QueryCursor {
 	return qc
 }
 
+func newQueryMatch[T, U ~uint16 | ~uint32](id T, patternIndex U) *QueryMatch {
+	return &QueryMatch{ID: uint32(id), PatternIndex: uint16(patternIndex)}
+}
+
 // close should be called to ensure that all the memory used by the query cursor is freed.
 //
 // As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
@@ -441,13 +445,9 @@ func (c *QueryCursor) NextMatch() (*QueryMatch, bool) {
 		return nil, false
 	}
 
-	qm := &QueryMatch{
-		ID:           uint32(cqm.id),
-		PatternIndex: uint16(cqm.pattern_index),
-	}
+	qm := newQueryMatch(cqm.id, cqm.pattern_index)
 
-	cqc := unsafe.Slice(cqm.captures, int(cqm.capture_count))
-	for _, cc := range cqc {
+	for _, cc := range unsafe.Slice(cqm.captures, int(cqm.capture_count)) {
 		idx := uint32(cc.index)
 		node := c.t.cachedNode(cc.node)
 		qm.Captures = append(qm.Captures, QueryCapture{Index: idx, Node: node})
@@ -475,13 +475,9 @@ func (c *QueryCursor) NextCapture() (qm *QueryMatch, idx uint32, ok bool) {
 		return
 	}
 
-	qm = &QueryMatch{
-		ID:           uint32(cqm.id),
-		PatternIndex: uint16(cqm.pattern_index),
-	}
+	qm = newQueryMatch(cqm.id, cqm.pattern_index)
 
-	cqc := unsafe.Slice(cqm.captures, int(cqm.capture_count))
-	for _, cc := range cqc {
+	for _, cc := range unsafe.Slice(cqm.captures, int(cqm.capture_count)) {
 		idx2 := uint32(cc.index)
 		node := c.t.cachedNode(cc.node)
 		qm.Captures = append(qm.Captures, QueryCapture{Index: idx2, Node: node})
@@ -508,9 +504,13 @@ func (c *QueryCursor) SetMaxStartDepth(maxStartDepth uint32) {
 
 // Non API.
 
+func (qm *QueryMatch) copy() *QueryMatch {
+	return newQueryMatch(qm.ID, qm.PatternIndex)
+}
+
 // FilterPredicates filters the given query match with the applicable predicates.
 func (c *QueryCursor) FilterPredicates(m *QueryMatch, input []byte) (qm *QueryMatch) { //nolint:funlen,gocognit,cyclop,lll // TODO
-	qm = &QueryMatch{ID: m.ID, PatternIndex: m.PatternIndex}
+	qm = m.copy()
 
 	predicates := c.q.PredicatesForPattern(uint32(qm.PatternIndex))
 	if len(predicates) == 0 {
