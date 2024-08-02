@@ -8,7 +8,7 @@ import (
 	"unsafe"
 )
 
-// Language defines how to parse a particular programming language
+// Language defines how to parse a particular programming language.
 type Language struct {
 	ptr  unsafe.Pointer
 	once sync.Once
@@ -20,7 +20,7 @@ type StateID = C.TSStateId
 // FieldID is used for parser field ID.
 type FieldID = C.TSFieldId
 
-// Copy returns another reference to the given language.
+// Copy returns another reference to the language.
 func (l *Language) Copy() *Language {
 	return newLanguage(C.ts_language_copy((*C.TSLanguage)(l.ptr)))
 }

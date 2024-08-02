@@ -17,7 +17,9 @@ import (
 
 const (
 	exprSumLR = "(expression (sum left: (expression (number)) right: (expression (number))))"
-	leakLimit = 3 * 1024 * 1024
+	// NOTE: We have a lot of parsers created in parallal so the increase in
+	// memory usage seems normal.
+	leakLimit = 25 * 1024 * 1024
 )
 
 func TestRootNode(t *testing.T) {
@@ -165,6 +167,14 @@ func TestTree(t *testing.T) {
 		},
 	})
 
+	rngExp := []Range{{EndPoint: Point{Row: maxUint32, Column: maxUint32}, EndByte: maxUint32}}
+	// Testing that it doesn't crash, as it involves a `C.free()`.
+	for range 10_000 {
+		if act := tree.IncludedRanges(); !slices.Equal(rngExp, act) {
+			t.Fatalf("Expected\n\n%#v, got\n\n%#v\n", rngExp, act)
+		}
+	}
+
 	// check that it changed tree
 	if !n.HasChanges() {
 		t.Fatal("Expected tree to have changes")
@@ -205,7 +215,6 @@ func TestTree(t *testing.T) {
 	}
 }
 
-// TODO: Refactor this, it's very hard to follow.
 func TestErrorNodes(t *testing.T) {
 	t.Parallel()
 

@@ -16,7 +16,7 @@ fmt:
 	@ls -1 *.go|while read x; do gofumpt -w -extra $$x; done
 
 todo:
-	@grep -E '(FIXME|TODO):' *.go
+	@grep -E '(FIXME|TODO):' *.go || true
 
 # Show missing/unimplemented identifiers,
 # except for wasm (ignored) and lookahead (maybe pending?).

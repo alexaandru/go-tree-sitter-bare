@@ -14,7 +14,7 @@ func TestQueryWithPredicates(t *testing.T) {
 	testCases := []struct {
 		msg, pattern string
 		exp          error
-	}{ // TODO: Also add cases for ErrPredicateWrongStart
+	}{ // Also add cases for ErrPredicateWrongStart
 		{"#match?: too few arguments", `((expression) @capture (#match? "this"))`, ErrPredicateArgsWrongCount},
 		{"#match?: too many arguments", `((expression) @capture (#match? a b "this"))`, ErrPredicateArgsWrongCount},
 		{"#match?: need a capture as first argument", `((expression) @capture (#match? "a" "this"))`, ErrPredicateWrongType},
@@ -68,7 +68,7 @@ func TestQueryWithPredicates(t *testing.T) {
 				t.Fatalf("Expected %v, got %v", tc.exp, err)
 			}
 
-			// TODO: Also add tests for actual error message.
+			// Also add tests for actual error message.
 
 			if (q == nil) && success {
 				t.Fatal(tc.msg)

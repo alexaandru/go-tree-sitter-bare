@@ -153,8 +153,9 @@ func (t *Tree) Language() *Language {
 // The returned pointer must be freed by the caller.
 func (t *Tree) IncludedRanges() []Range {
 	count := C.uint(0)
-	// FIXME: Free this!
+
 	p := C.ts_tree_included_ranges(t.c, &count)
+	defer freeTSRangeArray(p, count)
 
 	return mkRanges(p, count)
 }
@@ -182,8 +183,9 @@ func (t *Tree) Edit(i InputEdit) {
 // given `length` pointer.
 func (t *Tree) GetChangedRanges(other *Tree) []Range {
 	count := C.uint(0)
-	// FIXME: Free this!
+
 	p := C.ts_tree_get_changed_ranges(t.c, other.c, &count)
+	defer freeTSRangeArray(p, count)
 
 	return mkRanges(p, count)
 }
@@ -220,4 +222,13 @@ func (t *Tree) cachedNode(ptr C.TSNode) (n *Node) {
 	t.cache[p] = n
 
 	return
+}
+
+func freeTSRangeArray(p *C.struct_TSRange, count C.uint) {
+	pp := unsafe.Pointer(p)
+
+	for ; count > 0; count-- {
+		C.free(pp)
+		pp = unsafe.Pointer(uintptr(pp) + C.sizeof_struct_TSRange)
+	}
 }

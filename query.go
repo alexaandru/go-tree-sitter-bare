@@ -26,7 +26,7 @@ type Query struct {
 type QueryCursor struct {
 	c    *C.TSQueryCursor
 	t    *Tree
-	q    *Query // NOTE: Keep a pointer to it to avoid GC. TODO: Maybe use Pinner instead?
+	q    *Query // NOTE: Keep a pointer to it to avoid GC. Maybe use Pinner instead?
 	once sync.Once
 }
 
@@ -91,8 +91,11 @@ const (
 	QueryErrorLanguage  QueryError = C.TSQueryErrorLanguage
 )
 
-// UnlimitedMaxDepth is used for turning off max depth limit for query cursor.
-const UnlimitedMaxDepth = uint32(C.UINT32_MAX)
+const (
+	maxUint32 = uint32(C.UINT32_MAX)
+	// UnlimitedMaxDepth is used for turning off max depth limit for query cursor.
+	UnlimitedMaxDepth = maxUint32
+)
 
 // Query related errors.
 var (
@@ -603,8 +606,6 @@ func (err *DetailedQueryError) Error() string {
 	return err.Message
 }
 
-// Copied From: https://github.com/klothoplatform/go-tree-sitter/commit/e351b20167b26d515627a4a1a884528ede5fef79
-
 func (steps QueryPredicateSteps) split() (out []QueryPredicateSteps) {
 	currentSteps := make(QueryPredicateSteps, 0, len(steps))
 
@@ -672,16 +673,10 @@ func (steps QueryPredicateSteps) assertStepType(op string, step int, expType C.T
 		return
 	}
 
-	ss := "first"
-	if step > 1 {
-		// TODO: handler bigger step numbers.
-		ss = "second"
-	}
-
 	if steps[step].Type != expType {
 		sstep := cmp.Or(humanQueryStepTypes[expType], "unknown")
-		err = fmt.Errorf("%s argument of `#%s` %w %s. Got %s",
-			ss, op, ErrPredicateWrongType, sstep, valueFn(steps[step].ValueID))
+		err = fmt.Errorf("argument #%d of `#%s` %w %s, got %s",
+			step, op, ErrPredicateWrongType, sstep, valueFn(steps[step].ValueID))
 	}
 
 	return

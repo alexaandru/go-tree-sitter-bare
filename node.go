@@ -23,14 +23,14 @@ const (
 	SymbolTypeAuxiliary Symbol = C.TSSymbolTypeAuxiliary
 )
 
-var humanSymbols = map[C.ushort]string{ //nolint:gochecknoglobals // ok
+var humanSymbolTypes = map[C.ushort]string{ //nolint:gochecknoglobals // ok
 	SymbolTypeRegular:   "Regular",
 	SymbolTypeAnonymous: "Anonymous",
 	SymbolTypeAuxiliary: "Auxiliary",
 }
 
 func (t Symbol) String() string {
-	return humanSymbols[t]
+	return humanSymbolTypes[t]
 }
 
 // Type returns the node's type.
