@@ -16,7 +16,7 @@ sed -e 's/^/\/\//' src/parser.c | grep -v '#include "tree_sitter/parser.h"' >> $
 echo "import \"C\"
 
 func getTestGrammar() *Language {
-	return newLanguage(C.tree_sitter_test_grammar())
+	return NewLanguage(C.tree_sitter_test_grammar())
 }" >> $out
 
 # cleanup

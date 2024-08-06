@@ -145,7 +145,7 @@ func (t *Tree) RootNodeWithOffset(ofs uint32, extent Point) *Node {
 
 // Language returns the language that was used to parse the syntax tree.
 func (t *Tree) Language() *Language {
-	return newLanguage(C.ts_tree_language(t.c))
+	return NewLanguage(C.ts_tree_language(t.c))
 }
 
 // IncludedRanges returns the array of included ranges that was used to parse the syntax tree.

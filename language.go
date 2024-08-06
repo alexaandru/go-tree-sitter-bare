@@ -22,7 +22,7 @@ type FieldID = C.TSFieldId
 
 // Copy returns another reference to the language.
 func (l *Language) Copy() *Language {
-	return newLanguage(C.ts_language_copy((*C.TSLanguage)(l.ptr)))
+	return NewLanguage(C.ts_language_copy((*C.TSLanguage)(l.ptr)))
 }
 
 // Delete frees any dynamically-allocated resources for this language, if

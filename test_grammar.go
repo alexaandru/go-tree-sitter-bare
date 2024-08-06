@@ -606,5 +606,5 @@ package sitter
 import "C"
 
 func getTestGrammar() *Language {
-	return newLanguage(C.tree_sitter_test_grammar())
+	return NewLanguage(C.tree_sitter_test_grammar())
 }
