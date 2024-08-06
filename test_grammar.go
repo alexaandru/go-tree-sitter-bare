@@ -604,7 +604,8 @@ package sitter
 //}
 //#endif
 import "C"
+import "unsafe"
 
 func getTestGrammar() *Language {
-	return NewLanguage(C.tree_sitter_test_grammar())
+	return NewLanguage(unsafe.Pointer(C.tree_sitter_test_grammar()))
 }

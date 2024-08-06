@@ -90,7 +90,7 @@ func (p *Parser) close() {
 
 // Language returns the parser's current language, if set.
 func (p *Parser) Language() (_ *Language) {
-	return NewLanguage(C.ts_parser_language(p.c))
+	return NewLanguage(unsafe.Pointer(C.ts_parser_language(p.c)))
 }
 
 // SetLanguage sets the language that the parser should use for parsing.

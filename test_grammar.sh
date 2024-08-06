@@ -14,9 +14,10 @@ echo "package sitter" >> $out
 sed -e 's/^/\/\//' src/tree_sitter/parser.h >> $out
 sed -e 's/^/\/\//' src/parser.c | grep -v '#include "tree_sitter/parser.h"' >> $out
 echo "import \"C\"
+echo "import \"unsafe\"
 
 func getTestGrammar() *Language {
-	return NewLanguage(C.tree_sitter_test_grammar())
+	return NewLanguage(unsafe.Pointer(C.tree_sitter_test_grammar()))
 }" >> $out
 
 # cleanup

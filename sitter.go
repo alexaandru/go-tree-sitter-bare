@@ -28,7 +28,7 @@ func Parse(ctx context.Context, content []byte, lang *Language) (n *Node, err er
 }
 
 // NewLanguage initializes a new language from the provided pointer.
-func NewLanguage[T any, P *T](ptr P) (l *Language) {
+func NewLanguage(ptr unsafe.Pointer) (l *Language) {
 	if ptr == nil {
 		return
 	}

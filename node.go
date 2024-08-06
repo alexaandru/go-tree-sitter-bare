@@ -45,7 +45,7 @@ func (n Node) Symbol() Symbol {
 
 // Language returns the node's language.
 func (n Node) Language() *Language {
-	return NewLanguage(C.ts_node_language(n.c))
+	return NewLanguage(unsafe.Pointer(C.ts_node_language(n.c)))
 }
 
 // GrammarType returns the node's type as it appears in the grammar,
