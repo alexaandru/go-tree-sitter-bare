@@ -33,5 +33,5 @@ func NewLanguage(ptr unsafe.Pointer) (l *Language) {
 		return
 	}
 
-	return &Language{ptr: unsafe.Pointer(ptr)}
+	return &Language{ptr: ptr}
 }
