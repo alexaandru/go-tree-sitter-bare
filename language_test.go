@@ -30,7 +30,7 @@ func TestLanguage(t *testing.T) {
 	testCases := []struct {
 		n       uint16
 		expName string
-		expType Symbol
+		expType SymbolType
 	}{
 		{0, "end", SymbolTypeAuxiliary},
 		{1, "(", SymbolTypeAnonymous},

@@ -570,7 +570,7 @@ func TestQueryError(t *testing.T) {
 	exp := DetailedQueryError{
 		Offset:  2,
 		Type:    QueryErrorNodeType,
-		Message: "invalid node type 'unknown' at line 1 column 0",
+		Message: "invalid NodeType 'unknown' at line 1 column 0",
 	}
 	if err.Error() != exp.Error() {
 		t.Fatal("Error is not the expected QueryError:", err)

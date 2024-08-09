@@ -45,9 +45,12 @@ type QueryMatch struct {
 
 // QueryPredicateStep represents one step in a predicate.
 type QueryPredicateStep struct {
-	Type    C.TSQueryPredicateStepType
+	Type    QueryPredicateStepType
 	ValueID uint32
 }
+
+// QueryPredicateStepType represents type of step in a predicate.
+type QueryPredicateStepType = C.TSQueryPredicateStepType
 
 // QueryPredicateSteps holds all the steps for a predicate.
 type QueryPredicateSteps []QueryPredicateStep
@@ -66,9 +69,9 @@ type DetailedQueryError struct {
 
 // Possible query predicate steps.
 const (
-	QueryPredicateStepTypeDone    = C.TSQueryPredicateStepTypeDone
-	QueryPredicateStepTypeCapture = C.TSQueryPredicateStepTypeCapture
-	QueryPredicateStepTypeString  = C.TSQueryPredicateStepTypeString
+	QueryPredicateStepTypeDone    QueryPredicateStepType = C.TSQueryPredicateStepTypeDone
+	QueryPredicateStepTypeCapture QueryPredicateStepType = C.TSQueryPredicateStepTypeCapture
+	QueryPredicateStepTypeString  QueryPredicateStepType = C.TSQueryPredicateStepTypeString
 )
 
 // Possible quantifiers.
@@ -102,24 +105,6 @@ var (
 	ErrPredicateArgsWrongCount = errors.New("wrong number of arguments")
 	ErrPredicateWrongStart     = errors.New("predicate must begin with a literal value")
 	ErrPredicateWrongType      = errors.New("predicate must be a")
-)
-
-//nolint:gochecknoglobals // ok
-var (
-	humanQueryErrors = map[QueryError]string{
-		QueryErrorNone:      "none",
-		QueryErrorSyntax:    "syntax",
-		QueryErrorNodeType:  "node type",
-		QueryErrorField:     "field",
-		QueryErrorCapture:   "capture",
-		QueryErrorStructure: "structure",
-		QueryErrorLanguage:  "language",
-	}
-	humanQueryStepTypes = map[C.TSQueryPredicateStepType]string{
-		QueryPredicateStepTypeDone:    "done",
-		QueryPredicateStepTypeCapture: "capture",
-		QueryPredicateStepTypeString:  "string",
-	}
 )
 
 // NewQuery creates a new query from a string containing one or more S-expression
@@ -215,10 +200,6 @@ func newDetailedQueryError(pattern []byte, errtype C.TSQueryError, erroff C.uint
 	}
 
 	return &DetailedQueryError{Offset: errorOffset, Type: errorType, Message: message}
-}
-
-func (err QueryError) String() string {
-	return cmp.Or(humanQueryErrors[err], "unknown")
 }
 
 // close should be called to ensure that all the memory used by the query is freed.
@@ -667,14 +648,14 @@ func (steps QueryPredicateSteps) assertCount(op string, expCount int, opts ...in
 	return
 }
 
-func (steps QueryPredicateSteps) assertStepType(op string, step int, expType C.TSQueryPredicateStepType, valueFn func(uint32) string) (err error) { //nolint:lll // ok
+func (steps QueryPredicateSteps) assertStepType(op string, step int, expType QueryPredicateStepType, valueFn func(uint32) string) (err error) { //nolint:lll // ok
 	// Only validate step if exists, to account for optional steps.
 	if step >= len(steps) {
 		return
 	}
 
 	if steps[step].Type != expType {
-		sstep := cmp.Or(humanQueryStepTypes[expType], "unknown")
+		sstep := cmp.Or(expType.String(), "unknown")
 		err = fmt.Errorf("argument #%d of `#%s` %w %s, got %s",
 			step, op, ErrPredicateWrongType, sstep, valueFn(steps[step].ValueID))
 	}

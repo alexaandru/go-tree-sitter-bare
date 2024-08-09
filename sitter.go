@@ -1,3 +1,8 @@
+//go:generate stringer -type=SymbolType -trimprefix=SymbolType -output=stringer1.go .
+//go:generate stringer -type=IterMode -output=stringer2.go .
+//go:generate stringer -type=QueryError -trimprefix=QueryError -output=stringer3.go .
+//go:generate stringer -type=QueryPredicateStepType -trimprefix=QueryPredicateStepType -output=stringer4.go .
+
 package sitter
 
 // #include "sitter.h"

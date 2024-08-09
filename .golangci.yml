@@ -17,7 +17,7 @@ linters-settings:
     severity: Warn
     check-type-assertions: true
     check-blank: true
-    #ignore: fmt:.*
+    ignore: ""
     disable-default-exclusions: false
   errchkjson:
     severity: Warn

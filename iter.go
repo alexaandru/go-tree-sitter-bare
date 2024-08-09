@@ -14,20 +14,21 @@ type Iterator struct {
 
 // The possible iteration modes.
 const (
-	DFSMode IterMode = iota
-	BFSMode
+	DFS IterMode = iota
+	BFS
+	DFSNamed
+	BFSNamed
 )
 
 // NewIterator takes a node and mode (DFS/BFS) and returns iterator over
 // children of the node.
-func NewIterator(n *Node, mode IterMode) *Iterator {
-	return &Iterator{toVisit: []*Node{n}, mode: mode}
-}
+func NewIterator(n *Node, opts ...IterMode) *Iterator {
+	mode := DFS
+	if len(opts) > 0 {
+		mode = opts[0]
+	}
 
-// NewNamedIterator takes a node and mode (DFS/BFS) and returns iterator
-// over named children of the node.
-func NewNamedIterator(n *Node, mode IterMode) *Iterator {
-	return &Iterator{toVisit: []*Node{n}, mode: mode, named: true}
+	return &Iterator{toVisit: []*Node{n}, mode: mode, named: mode > BFS}
 }
 
 // Next returns the next node in the current iteration.
@@ -51,9 +52,9 @@ func (iter *Iterator) Next() (n *Node, err error) {
 	}
 
 	switch iter.mode {
-	case DFSMode:
+	case DFS, DFSNamed:
 		iter.toVisit = append(children, iter.toVisit...)
-	case BFSMode:
+	case BFS, BFSNamed:
 		iter.toVisit = append(iter.toVisit, children...)
 	default:
 		panic("not implemented")

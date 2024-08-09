@@ -77,8 +77,8 @@ func (l *Language) FieldID(name string) FieldID {
 }
 
 // SymbolType returns named, anonymous, or a hidden type for a Symbol.
-func (l *Language) SymbolType(s Symbol) Symbol {
-	return Symbol(C.ts_language_symbol_type((*C.TSLanguage)(l.ptr), s))
+func (l *Language) SymbolType(s Symbol) SymbolType {
+	return SymbolType(C.ts_language_symbol_type((*C.TSLanguage)(l.ptr), s)) //nolint:unconvert // ok
 }
 
 // Version returns the ABI version number for this language. This version number is used

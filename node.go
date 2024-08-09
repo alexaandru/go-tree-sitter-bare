@@ -13,25 +13,18 @@ type Node struct {
 	t *Tree // keep pointer on tree because node is valid only as long as tree is
 }
 
-// Symbol indicates the type of symbol.
+// Symbol indicates the symbol.
 type Symbol = C.TSSymbol
+
+// SymbolType indicates the type of symbol.
+type SymbolType = C.TSSymbolType
 
 // Possible symbol types.
 const (
-	SymbolTypeRegular   Symbol = C.TSSymbolTypeRegular
-	SymbolTypeAnonymous Symbol = C.TSSymbolTypeAnonymous
-	SymbolTypeAuxiliary Symbol = C.TSSymbolTypeAuxiliary
+	SymbolTypeRegular   SymbolType = C.TSSymbolTypeRegular
+	SymbolTypeAnonymous SymbolType = C.TSSymbolTypeAnonymous
+	SymbolTypeAuxiliary SymbolType = C.TSSymbolTypeAuxiliary
 )
-
-var humanSymbolTypes = map[C.ushort]string{ //nolint:gochecknoglobals // ok
-	SymbolTypeRegular:   "Regular",
-	SymbolTypeAnonymous: "Anonymous",
-	SymbolTypeAuxiliary: "Auxiliary",
-}
-
-func (t Symbol) String() string {
-	return humanSymbolTypes[t]
-}
 
 // Type returns the node's type.
 func (n Node) Type() string {
@@ -51,17 +44,14 @@ func (n Node) Language() *Language {
 // GrammarType returns the node's type as it appears in the grammar,
 // ignoring aliases.
 func (n Node) GrammarType() string {
-	p := C.ts_node_grammar_type(n.c)
-	defer C.free(unsafe.Pointer(p))
-
-	return C.GoString(p)
+	return C.GoString(C.ts_node_grammar_type(n.c))
 }
 
 // GrammarSymbol returns the node's symbol as it appears in the grammar,
 // ignoring aliases.
 // This should be used in `ts_language_next_state` instead of `ts_node_symbol`.
 func (n Node) GrammarSymbol() Symbol {
-	return C.ts_node_grammar_symbol(n.c)
+	return Symbol(C.ts_node_grammar_symbol(n.c)) //nolint:unconvert // we need the methods on the aliased type
 }
 
 // StartByte returns the node's start byte.
@@ -311,11 +301,6 @@ func (n Node) Equal(other *Node) bool {
 }
 
 // Non API.
-
-// ID returns the node ID.
-func (n Node) ID() uintptr {
-	return uintptr(n.c.id)
-}
 
 // Range returns the node range.
 func (n Node) Range() Range {
