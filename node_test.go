@@ -22,17 +22,115 @@ func TestNodeSymbol(t *testing.T) {
 
 func TestNodeLanguage(t *testing.T) {
 	t.Parallel()
-	t.Skip("TODO")
+
+	input := []byte(`1 + 2`)
+
+	gr := getTestGrammar()
+
+	root, err := Parse(context.Background(), input, gr)
+	if err != nil {
+		t.Fatal("Expected no error, got", err)
+	}
+
+	exp := uintptr(gr.ptr)
+
+	act := uintptr(root.Language().ptr)
+	if act != exp {
+		t.Fatalf("The languages differ")
+	}
+
+	c := NewTreeCursor(root)
+
+	c.GoToFirstChild()
+
+	act = uintptr(c.CurrentNode().Language().ptr)
+	if act != exp {
+		t.Fatalf("The languages differ")
+	}
 }
 
 func TestNodeGrammarType(t *testing.T) {
 	t.Parallel()
-	t.Skip("TODO")
+
+	input := []byte(`1 + 2`)
+
+	gr := getTestGrammar()
+
+	root, err := Parse(context.Background(), input, gr)
+	if err != nil {
+		t.Fatal("Expected no error, got", err)
+	}
+
+	t.Log(root)
+
+	exp := "expression"
+	act := root.GrammarType()
+
+	if act != exp {
+		t.Fatalf("Expected grammar type %q, got %q", exp, act)
+	}
+
+	c := NewTreeCursor(root)
+
+	c.GoToFirstChild()
+
+	exp = "sum"
+	act = c.CurrentNode().GrammarType()
+
+	if act != exp {
+		t.Fatalf("Expected grammar type %q, got %q", exp, act)
+	}
+
+	c.GoToFirstChild()
+
+	exp = "expression"
+	act = c.CurrentNode().GrammarType()
+
+	if act != exp {
+		t.Fatalf("Expected grammar type %q, got %q", exp, act)
+	}
 }
 
 func TestNodeGrammarSymbol(t *testing.T) {
 	t.Parallel()
-	t.Skip("TODO")
+
+	input := []byte(`1 + 2`)
+
+	gr := getTestGrammar()
+
+	root, err := Parse(context.Background(), input, gr)
+	if err != nil {
+		t.Fatal("Expected no error, got", err)
+	}
+
+	t.Log(root)
+
+	exp := Symbol(7)
+	act := root.GrammarSymbol()
+
+	if act != exp {
+		t.Fatalf("Expected grammar type %[1]s (%[1]d), got %[2]s (%[2]d)", exp, act)
+	}
+
+	c := NewTreeCursor(root)
+
+	c.GoToFirstChild()
+
+	exp = Symbol(8)
+	act = c.CurrentNode().GrammarSymbol()
+
+	if act != exp {
+		t.Fatalf("Expected grammar type %[1]s (%[1]d), got %[2]s (%[2]d)", exp, act)
+	}
+
+	c.GoToFirstChild()
+
+	exp = Symbol(7)
+	act = c.CurrentNode().GrammarSymbol()
+
+	if act != exp {
+		t.Fatalf("Expected grammar type %[1]s (%[1]d), got %[2]s (%[2]d)", exp, act)
+	}
 }
 
 func TestNodeStartByte(t *testing.T) {
