@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestQueryWithPredicates(t *testing.T) {
+func TestNewQuery(t *testing.T) {
 	t.Parallel()
 
 	//nolint:lll // ok
@@ -77,7 +77,157 @@ func TestQueryWithPredicates(t *testing.T) {
 	}
 }
 
-func TestFilterPredicates(t *testing.T) {
+func TestNewDetailedQueryError(t *testing.T) {
+	t.Parallel()
+	t.Skip("tested implicitly")
+}
+
+func TestQueryErrorString(t *testing.T) {
+	t.Parallel()
+	t.Skip("tested implicitly")
+}
+
+func TestQueryClose(t *testing.T) {
+	t.Parallel()
+	t.Skip("tested implicitly")
+}
+
+func TestQueryPatternCount(t *testing.T) {
+	t.Parallel()
+	t.Skip("tested implicitly")
+}
+
+func TestQueryCaptureCount(t *testing.T) {
+	t.Parallel()
+	t.Skip("TODO")
+}
+
+func TestQueryStringCount(t *testing.T) {
+	t.Parallel()
+	t.Skip("TODO")
+}
+
+func TestQueryStartByteForPattern(t *testing.T) {
+	t.Parallel()
+	t.Skip("TODO")
+}
+
+func TestQueryPredicatesForPattern(t *testing.T) {
+	t.Parallel()
+	t.Skip("tested implicitly")
+}
+
+func TestQueryIsPatternRooted(t *testing.T) {
+	t.Parallel()
+	t.Skip("TODO")
+}
+
+func TestQueryIsPatternNonLocal(t *testing.T) {
+	t.Parallel()
+	t.Skip("TODO")
+}
+
+func TestQueryIsPatternGuaranteedAtStep(t *testing.T) {
+	t.Parallel()
+	t.Skip("TODO")
+}
+
+func TestQueryCaptureNameForID(t *testing.T) {
+	t.Parallel()
+	t.Skip("tested implicitly")
+}
+
+func TestQueryCaptureQuantifierForID(t *testing.T) {
+	t.Parallel()
+	t.Skip("TODO")
+}
+
+func TestQueryStringValueForID(t *testing.T) {
+	t.Parallel()
+	t.Skip("tested implicitly")
+}
+
+func TestQueryDisableCapture(t *testing.T) {
+	t.Parallel()
+	t.Skip("TODO")
+}
+
+func TestQueryDisablePattern(t *testing.T) {
+	t.Parallel()
+	t.Skip("TODO")
+}
+
+func TestNewQueryCursor(t *testing.T) {
+	t.Parallel()
+	t.Skip("tested implicitly")
+}
+
+func TestNewQueryMatch(t *testing.T) {
+	t.Parallel()
+	t.Skip("tested implicitly")
+}
+
+func TestQueryCursorClose(t *testing.T) {
+	t.Parallel()
+	t.Skip("tested implicitly")
+}
+
+func TestQueryCursorExec(t *testing.T) {
+	t.Parallel()
+	t.Skip("tested implicitly")
+}
+
+func TestQueryCursorDidExceedMatchLimit(t *testing.T) {
+	t.Parallel()
+	t.Skip("TODO")
+}
+
+func TestQueryCursorMatchLimit(t *testing.T) {
+	t.Parallel()
+	t.Skip("TODO")
+}
+
+func TestQueryCursorSetMatchLimit(t *testing.T) {
+	t.Parallel()
+	t.Skip("TODO")
+}
+
+func TestQueryCursorSetByteRange(t *testing.T) {
+	t.Parallel()
+	t.Skip("TODO")
+}
+
+func TestQueryCursorSetPointRange(t *testing.T) {
+	t.Parallel()
+	t.Skip("TODO")
+}
+
+func TestQueryCursorNextMatch(t *testing.T) {
+	t.Parallel()
+	t.Skip("tested implicitly")
+}
+
+func TestQueryCursorRemoveMatch(t *testing.T) {
+	t.Parallel()
+	t.Skip("TODO")
+}
+
+func TestQueryCursorNextCapture(t *testing.T) {
+	t.Parallel()
+	t.Skip("TODO")
+}
+
+func TestQueryCursorSetMaxStartDepth(t *testing.T) {
+	t.Parallel()
+	t.Skip("TODO")
+}
+
+func TestQueryCursorCopy(t *testing.T) {
+	t.Parallel()
+	t.Skip("tested implicitly")
+}
+
+func TestQueryCursorFilterPredicates(t *testing.T) {
 	t.Parallel()
 
 	sumLR := `((sum left: (expression (number) @left) right: (expression (number) @right))`
@@ -140,4 +290,29 @@ func TestFilterPredicates(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDetailedQueryErrorError(t *testing.T) {
+	t.Parallel()
+	t.Skip("tested implicitly")
+}
+
+func TestQueryPredicateStepsSplit(t *testing.T) {
+	t.Parallel()
+	t.Skip("tested implicitly")
+}
+
+func TestQueryPredicateStepsAssertValid(t *testing.T) {
+	t.Parallel()
+	t.Skip("tested implicitly")
+}
+
+func TestQueryPredicateStepsAssertCount(t *testing.T) {
+	t.Parallel()
+	t.Skip("tested implicitly")
+}
+
+func TestQueryPredicateStepsAssertStepType(t *testing.T) {
+	t.Parallel()
+	t.Skip("tested implicitly")
 }

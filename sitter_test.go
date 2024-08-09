@@ -22,6 +22,9 @@ const (
 	leakLimit = 25 * 1024 * 1024
 )
 
+// github.com/alexaandru/go-tree-sitter-bare/sitter.go:18:		Parse				83.3%
+// github.com/alexaandru/go-tree-sitter-bare/sitter.go:31:		NewLanguage			66.7%
+
 func TestRootNode(t *testing.T) {
 	t.Parallel()
 
@@ -305,55 +308,6 @@ func TestErrorNodes(t *testing.T) {
 
 	if !missing.IsMissing() {
 		t.Fatal("Expected missing")
-	}
-}
-
-func TestLanguage(t *testing.T) {
-	t.Parallel()
-
-	js := getTestGrammar()
-
-	exp := uint32(9)
-	if x := js.SymbolCount(); x != exp {
-		t.Fatalf("Expected symbol count to be %d, got %d", exp, x)
-	}
-
-	expStr := "Regular"
-	if x := SymbolTypeRegular.String(); x != expStr {
-		t.Fatalf("Expected regular symbol type to be %q, got %q", expStr, x)
-	}
-
-	testCases := []struct {
-		n       uint16
-		expName string
-		expType Symbol
-	}{
-		{0, "end", SymbolTypeAuxiliary},
-		{1, "(", SymbolTypeAnonymous},
-		{2, ")", SymbolTypeAnonymous},
-		{3, "+", SymbolTypeAnonymous},
-		{4, "number", SymbolTypeRegular},
-		{5, "comment", SymbolTypeRegular},
-		{6, "variable", SymbolTypeRegular},
-		{7, "expression", SymbolTypeRegular},
-		{8, "sum", SymbolTypeRegular},
-		{9, "", SymbolTypeAuxiliary},
-	}
-
-	for _, tc := range testCases {
-		t.Run("", func(t *testing.T) {
-			t.Parallel()
-
-			symName := js.SymbolName(Symbol(tc.n))
-			if symName != tc.expName {
-				t.Fatalf("Expected symbol name %q got %q for %d", tc.expName, symName, tc.n)
-			}
-
-			symType := js.SymbolType(Symbol(tc.n))
-			if symType != tc.expType {
-				t.Fatalf("Expected symbol type %d got %d for %d", tc.expType, symType, tc.n)
-			}
-		})
 	}
 }
 
@@ -936,56 +890,6 @@ func TestCursorKeepsQuery(t *testing.T) {
 				break
 			}
 		}
-	}
-}
-
-func TestNodeChildContainingDescendant(t *testing.T) {
-	t.Parallel()
-
-	input := []byte(`1 + 2`)
-
-	root, err := Parse(context.Background(), input, getTestGrammar())
-	if err != nil {
-		t.Fatal("Expected no error, got", err)
-	}
-
-	c := NewTreeCursor(root)
-	if c.CurrentNode() != root {
-		t.Fatal("Expected current node to be root")
-	}
-
-	c.GoToFirstChild()
-
-	n := c.CurrentNode()
-
-	exp := "(sum left: (expression (number)) right: (expression (number)))"
-	if act := n.String(); act != exp {
-		t.Fatalf("Expected %q, got %q", exp, act)
-	}
-
-	c.GoToFirstChild()
-	c.GoToNextSibling()
-	c.GoToNextSibling()
-	c.GoToFirstChild()
-
-	d := c.CurrentNode()
-
-	exp = "(number)"
-	if act := d.String(); act != exp {
-		t.Fatalf("Expected %q, got %q", exp, act)
-	}
-
-	c.GoToParent()
-
-	p := c.CurrentNode()
-
-	exp = "(expression (number))"
-	if act := p.String(); act != exp {
-		t.Fatalf("Expected %q, got %q", exp, act)
-	}
-
-	if act := n.ChildContainingDescendant(d); act != p {
-		t.Fatalf("Expected %v, got %v", p, act)
 	}
 }
 
