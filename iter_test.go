@@ -37,8 +37,6 @@ func TestNewIterator(t *testing.T) {
 func TestIteratorNext(t *testing.T) {
 	t.Parallel()
 
-	gr := getTestGrammar()
-
 	for _, tc := range iterTestCases {
 		t.Run(fmt.Sprintf("%s/%s", tc.source, tc.mode), func(t *testing.T) {
 			t.Parallel()
@@ -77,8 +75,6 @@ func TestIteratorNext(t *testing.T) {
 
 func TestIteratorForEach(t *testing.T) {
 	t.Parallel()
-
-	gr := getTestGrammar()
 
 	for _, tc := range iterTestCases {
 		t.Run(fmt.Sprintf("%s/%s", tc.source, tc.mode), func(t *testing.T) {

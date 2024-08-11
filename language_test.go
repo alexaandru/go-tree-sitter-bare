@@ -4,21 +4,33 @@ import "testing"
 
 func TestLanguageCopy(t *testing.T) {
 	t.Parallel()
-	t.Skip("TODO")
+
+	gr2 := gr.Copy()
+
+	if gr.ptr != gr2.ptr {
+		t.Fatal("The two grammars differ")
+	}
 }
 
 func TestLanguageDelete(t *testing.T) {
 	t.Parallel()
-	t.Skip("TODO")
+
+	gr2 := gr.Copy()
+
+	gr2.Delete()
+
+	// Not sure what else I could test.
+	// How could I possibly test that C freed the memory?
+	if gr2.ptr != nil {
+		t.Fatal("Expected gr2 to be deleted")
+	}
 }
 
 func TestLanguage(t *testing.T) {
 	t.Parallel()
 
-	js := getTestGrammar()
-
 	exp := uint32(9)
-	if x := js.SymbolCount(); x != exp {
+	if x := gr.SymbolCount(); x != exp {
 		t.Fatalf("Expected symbol count to be %d, got %d", exp, x)
 	}
 
@@ -28,32 +40,38 @@ func TestLanguage(t *testing.T) {
 	}
 
 	testCases := []struct {
-		n       uint16
+		n       Symbol
 		expName string
 		expType SymbolType
+		isNamed bool
 	}{
-		{0, "end", SymbolTypeAuxiliary},
-		{1, "(", SymbolTypeAnonymous},
-		{2, ")", SymbolTypeAnonymous},
-		{3, "+", SymbolTypeAnonymous},
-		{4, "number", SymbolTypeRegular},
-		{5, "comment", SymbolTypeRegular},
-		{6, "variable", SymbolTypeRegular},
-		{7, "expression", SymbolTypeRegular},
-		{8, "sum", SymbolTypeRegular},
-		{9, "", SymbolTypeAuxiliary},
+		{0, "end", SymbolTypeAuxiliary, true},
+		{1, "(", SymbolTypeAnonymous, false},
+		{2, ")", SymbolTypeAnonymous, false},
+		{3, "+", SymbolTypeAnonymous, false},
+		{4, "number", SymbolTypeRegular, true},
+		{5, "comment", SymbolTypeRegular, true},
+		{6, "variable", SymbolTypeRegular, true},
+		{7, "expression", SymbolTypeRegular, true},
+		{8, "sum", SymbolTypeRegular, true},
+		{9, "", SymbolTypeAuxiliary, false},
 	}
 
 	for _, tc := range testCases {
 		t.Run("", func(t *testing.T) {
 			t.Parallel()
 
-			symName := js.SymbolName(Symbol(tc.n))
+			symName := gr.SymbolName(tc.n)
 			if symName != tc.expName {
 				t.Fatalf("Expected symbol name %q got %q for %d", tc.expName, symName, tc.n)
 			}
 
-			symType := js.SymbolType(Symbol(tc.n))
+			symID := gr.SymbolID(symName, tc.isNamed)
+			if symName != "" && symID != tc.n {
+				t.Fatalf("Expected symbol ID %d got %d for %q", tc.n, symID, symName)
+			}
+
+			symType := gr.SymbolType(tc.n)
 			if symType != tc.expType {
 				t.Fatalf("Expected symbol type %d got %d for %d", tc.expType, symType, tc.n)
 			}
@@ -68,7 +86,11 @@ func TestLanguageSymbolCount(t *testing.T) {
 
 func TestLanguageStateCount(t *testing.T) {
 	t.Parallel()
-	t.Skip("TODO")
+
+	exp := uint32(9)
+	if act := gr.StateCount(); act != exp {
+		t.Fatalf("Expected state count to be %d, got %d", exp, act)
+	}
 }
 
 func TestLanguageSymbolName(t *testing.T) {
@@ -78,22 +100,62 @@ func TestLanguageSymbolName(t *testing.T) {
 
 func TestLanguageSymbolID(t *testing.T) {
 	t.Parallel()
-	t.Skip("TODO")
+	t.Skip("tested implicitly via TestLanguage()")
 }
 
 func TestLanguageFieldCount(t *testing.T) {
 	t.Parallel()
-	t.Skip("TODO")
+
+	exp := uint32(2)
+	if act := gr.FieldCount(); act != exp {
+		t.Fatalf("Expected field count to be %d, got %d", exp, act)
+	}
 }
 
 func TestLanguageFieldName(t *testing.T) {
 	t.Parallel()
-	t.Skip("TODO")
+
+	testCases := []struct {
+		n   int
+		exp string
+	}{
+		{0, ""},
+		{1, "left"},
+		{2, "right"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.exp, func(t *testing.T) {
+			t.Parallel()
+
+			if act := gr.FieldName(tc.n); act != tc.exp {
+				t.Fatalf("Expected %q, got %q for %d", tc.exp, act, tc.n)
+			}
+		})
+	}
 }
 
 func TestLanguageFieldID(t *testing.T) {
 	t.Parallel()
-	t.Skip("TODO")
+
+	testCases := []struct {
+		exp FieldID
+		n   string
+	}{
+		{0, ""},
+		{1, "left"},
+		{2, "right"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.n, func(t *testing.T) {
+			t.Parallel()
+
+			if act := gr.FieldID(tc.n); act != tc.exp {
+				t.Fatalf("Expected %d, got %q for %q", tc.exp, act, tc.n)
+			}
+		})
+	}
 }
 
 func TestLanguageSymbolType(t *testing.T) {
@@ -103,10 +165,14 @@ func TestLanguageSymbolType(t *testing.T) {
 
 func TestLanguageVersion(t *testing.T) {
 	t.Parallel()
-	t.Skip("TODO")
+
+	exp := TREE_SITTER_LANGUAGE_VERSION
+	if act := gr.Version(); act != exp {
+		t.Fatalf("Expected %d, got %d", exp, act)
+	}
 }
 
 func TestLanguageNextState(t *testing.T) {
 	t.Parallel()
-	t.Skip("TODO")
+	t.Skip("won't test: not really the Go code's job to assert the parser parses correctly")
 }

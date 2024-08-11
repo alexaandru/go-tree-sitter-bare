@@ -22,13 +22,16 @@ const (
 	leakLimit = 25 * 1024 * 1024
 )
 
+//nolint:gochecknoglobals // ok
+var gr = getTestGrammar()
+
 // github.com/alexaandru/go-tree-sitter-bare/sitter.go:18:		Parse				83.3%
 // github.com/alexaandru/go-tree-sitter-bare/sitter.go:31:		NewLanguage			66.7%
 
 func TestRootNode(t *testing.T) {
 	t.Parallel()
 
-	n, err := Parse(context.Background(), []byte("1 + 2"), getTestGrammar())
+	n, err := Parse(context.Background(), []byte("1 + 2"), gr)
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}
@@ -104,7 +107,7 @@ func TestTree(t *testing.T) {
 
 	parser := NewParser()
 	parser.Debug()
-	parser.SetLanguage(getTestGrammar())
+	parser.SetLanguage(gr)
 
 	tree, err := parser.ParseString(context.Background(), nil, []byte("1 + 2"))
 	if err != nil {
@@ -224,7 +227,7 @@ func TestErrorNodes(t *testing.T) {
 	parser := NewParser()
 
 	parser.Debug()
-	parser.SetLanguage(getTestGrammar())
+	parser.SetLanguage(gr)
 
 	tree, err := parser.ParseString(context.Background(), nil, []byte("1 + a"))
 	if err != nil {
@@ -315,7 +318,7 @@ func TestGC(t *testing.T) {
 	t.Parallel()
 
 	parser := NewParser()
-	parser.SetLanguage(getTestGrammar())
+	parser.SetLanguage(gr)
 
 	tree, err := parser.ParseString(context.Background(), nil, []byte("1 + 2"))
 	if err != nil {
@@ -348,7 +351,7 @@ func TestOperationLimitParsing(t *testing.T) {
 
 	parser := NewParser()
 	parser.SetTimeoutMicros(10)
-	parser.SetLanguage(getTestGrammar())
+	parser.SetLanguage(gr)
 
 	items := []string{}
 
@@ -372,7 +375,7 @@ func TestContextCancellationParsing(t *testing.T) {
 	t.Parallel()
 
 	parser := NewParser()
-	parser.SetLanguage(getTestGrammar())
+	parser.SetLanguage(gr)
 
 	items := []string{}
 
@@ -438,7 +441,7 @@ func TestIncludedRanges(t *testing.T) {
 	code := "1 + 2\n//3 + 5"
 
 	parser := NewParser()
-	parser.SetLanguage(getTestGrammar())
+	parser.SetLanguage(gr)
 
 	mainTree, err := parser.ParseString(context.Background(), nil, []byte(code))
 	if err != nil {
@@ -483,7 +486,7 @@ func TestSameNode(t *testing.T) {
 	t.Parallel()
 
 	parser := NewParser()
-	parser.SetLanguage(getTestGrammar())
+	parser.SetLanguage(gr)
 
 	tree, err := parser.ParseString(context.Background(), nil, []byte("1 + 2"))
 	if err != nil {
@@ -521,7 +524,7 @@ func TestQuery(t *testing.T) {
 
 	// test match only
 	parser := NewParser()
-	parser.SetLanguage(getTestGrammar())
+	parser.SetLanguage(gr)
 
 	tree, err := parser.ParseString(context.Background(), nil, []byte(js))
 	if err != nil {
@@ -530,7 +533,7 @@ func TestQuery(t *testing.T) {
 
 	root := tree.RootNode()
 
-	q, err := NewQuery([]byte("(sum) (number)"), getTestGrammar())
+	q, err := NewQuery([]byte("(sum) (number)"), gr)
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}
@@ -558,7 +561,7 @@ func TestQuery(t *testing.T) {
 func TestQueryError(t *testing.T) {
 	t.Parallel()
 
-	q, err := NewQuery([]byte("((unknown) name: (identifier))"), getTestGrammar())
+	q, err := NewQuery([]byte("((unknown) name: (identifier))"), gr)
 	if q != nil {
 		t.Fatal("Expected q to be nil, got", q)
 	}
@@ -591,7 +594,7 @@ func TestParserLifetime(t *testing.T) {
 
 			for j := range n {
 				p := NewParser()
-				p.SetLanguage(getTestGrammar())
+				p.SetLanguage(gr)
 
 				data := []byte("1 + 2")
 				// create some memory/CPU pressure
@@ -623,7 +626,7 @@ func TestTreeCursor(t *testing.T) { //nolint:tparallel // we test a specific nav
 
 	input := []byte(`1 + 2`)
 
-	root, err := Parse(context.Background(), input, getTestGrammar())
+	root, err := Parse(context.Background(), input, gr)
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}
@@ -690,7 +693,7 @@ func TestLeakParse(t *testing.T) {
 	t.Parallel()
 
 	parser := NewParser()
-	parser.SetLanguage(getTestGrammar())
+	parser.SetLanguage(gr)
 
 	for range 100_000 {
 		parser.ParseString(context.Background(), nil, []byte("1 + 2")) //nolint:errcheck // ok
@@ -713,7 +716,7 @@ func TestLeakRootNode(t *testing.T) {
 	t.Parallel()
 
 	parser := NewParser()
-	parser.SetLanguage(getTestGrammar())
+	parser.SetLanguage(gr)
 
 	for range 100_000 {
 		tree, err := parser.ParseString(context.Background(), nil, []byte("1 + 2"))
@@ -741,7 +744,7 @@ func TestParseInput(t *testing.T) {
 	t.Parallel()
 
 	parser := NewParser()
-	parser.SetLanguage(getTestGrammar())
+	parser.SetLanguage(gr)
 
 	// empty input
 	input := Input{
@@ -827,7 +830,7 @@ func TestLeakParseInput(t *testing.T) {
 	ctx := context.Background()
 
 	parser := NewParser()
-	parser.SetLanguage(getTestGrammar())
+	parser.SetLanguage(gr)
 
 	inputData := []byte("1 + 2")
 	input := Input{
@@ -865,7 +868,7 @@ func TestCursorKeepsQuery(t *testing.T) {
 	source := bytes.Repeat([]byte("1 + 1"), 10000)
 
 	parser := NewParser()
-	parser.SetLanguage(getTestGrammar())
+	parser.SetLanguage(gr)
 
 	tree, err := parser.ParseString(context.TODO(), nil, source)
 	if err != nil {
@@ -877,7 +880,7 @@ func TestCursorKeepsQuery(t *testing.T) {
 	for range 100 {
 		query, _ := NewQuery( //nolint:errcheck // ok
 			[]byte("(number) @match"),
-			getTestGrammar(),
+			gr,
 		)
 
 		qc := NewQueryCursor()
@@ -895,7 +898,7 @@ func TestCursorKeepsQuery(t *testing.T) {
 
 func BenchmarkParse(b *testing.B) {
 	parser := NewParser()
-	parser.SetLanguage(getTestGrammar())
+	parser.SetLanguage(gr)
 
 	inputData := []byte("1 + 2")
 
@@ -908,7 +911,7 @@ func BenchmarkParse(b *testing.B) {
 
 func BenchmarkParseCancellable(b *testing.B) {
 	parser := NewParser()
-	parser.SetLanguage(getTestGrammar())
+	parser.SetLanguage(gr)
 
 	inputData := []byte("1 + 2")
 
@@ -924,7 +927,7 @@ func BenchmarkParseCancellable(b *testing.B) {
 
 func BenchmarkParseInput(b *testing.B) {
 	parser := NewParser()
-	parser.SetLanguage(getTestGrammar())
+	parser.SetLanguage(gr)
 
 	inputData := []byte("1 + 2")
 	input := Input{
@@ -971,7 +974,7 @@ func testCaptures(t *testing.T, body, sq string, exp []string) {
 	t.Helper()
 
 	parser := NewParser()
-	parser.SetLanguage(getTestGrammar())
+	parser.SetLanguage(gr)
 
 	tree, err := parser.ParseString(context.Background(), nil, []byte(body))
 	if err != nil {
@@ -980,7 +983,7 @@ func testCaptures(t *testing.T, body, sq string, exp []string) {
 
 	root := tree.RootNode()
 
-	q, err := NewQuery([]byte(sq), getTestGrammar())
+	q, err := NewQuery([]byte(sq), gr)
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}

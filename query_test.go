@@ -57,7 +57,7 @@ func TestNewQuery(t *testing.T) {
 		t.Run(tc.msg, func(t *testing.T) {
 			t.Parallel()
 
-			q, err := NewQuery([]byte(tc.pattern), getTestGrammar())
+			q, err := NewQuery([]byte(tc.pattern), gr)
 			success := strings.Contains(tc.msg, "success")
 
 			if (err != nil) && success {
@@ -258,7 +258,7 @@ func TestQueryCursorFilterPredicates(t *testing.T) {
 			t.Parallel()
 
 			p := NewParser()
-			p.SetLanguage(getTestGrammar())
+			p.SetLanguage(gr)
 
 			tree, err := p.ParseString(context.TODO(), nil, []byte(tc.input))
 			if err != nil {
@@ -267,7 +267,7 @@ func TestQueryCursorFilterPredicates(t *testing.T) {
 
 			root := tree.RootNode()
 
-			q, err := NewQuery([]byte(tc.query), getTestGrammar())
+			q, err := NewQuery([]byte(tc.query), gr)
 			if err != nil {
 				t.Fatal("Expected no error, got", err)
 			}

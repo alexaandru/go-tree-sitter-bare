@@ -38,8 +38,6 @@ func TestNodeLanguage(t *testing.T) {
 
 	input := []byte(`1 + 2`)
 
-	gr := getTestGrammar()
-
 	root, err := Parse(context.Background(), input, gr)
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
@@ -180,7 +178,7 @@ func TestNodeChildContainingDescendant(t *testing.T) {
 
 	input := []byte(`1 + 2`)
 
-	root, err := Parse(context.Background(), input, getTestGrammar())
+	root, err := Parse(context.Background(), input, gr)
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}
@@ -360,8 +358,6 @@ func testParserSequence[T any](t *testing.T, source string, testCases seqTestCas
 	t.Helper()
 
 	input := []byte(source)
-
-	gr := getTestGrammar()
 
 	root, err := Parse(context.Background(), input, gr)
 	if err != nil {
