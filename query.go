@@ -95,6 +95,7 @@ const (
 )
 
 const (
+	maxUint16 = uint16(C.UINT16_MAX)
 	maxUint32 = uint32(C.UINT32_MAX)
 	// UnlimitedMaxDepth is used for turning off max depth limit for query cursor.
 	UnlimitedMaxDepth = maxUint32

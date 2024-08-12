@@ -38,8 +38,7 @@ still kept them in git history and contribute to the repo size.
 
 - timely kept up to date with `tree-sitter` updates (including new API calls);
 - tiny, zero deps repo;
-- implemented all API calls from [api.h](api.h) with the exception of lookahead
-  iterator (maybe adding that one later);
+- implemented all API calls from [api.h](api.h) with the exception of WASM;
 - added an automated check (and corresponding github action) to quickly
   check if we are falling behind [api.h](api.h);
 - reorganized code based on [api.h](api.h) sections and corresponding
