@@ -112,6 +112,11 @@ func TestQueryStartByteForPattern(t *testing.T) {
 	t.Skip("TODO")
 }
 
+func TestQueryEndByteForPattern(t *testing.T) {
+	t.Parallel()
+	t.Skip("TODO")
+}
+
 func TestQueryPredicatesForPattern(t *testing.T) {
 	t.Parallel()
 	t.Skip("tested implicitly")

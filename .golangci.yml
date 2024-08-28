@@ -193,7 +193,6 @@ linters:
     - errorlint
     - exhaustive
     #- exhaustruct
-    - exportloopref
     - fatcontext
     - forbidigo
     - forcetypeassert

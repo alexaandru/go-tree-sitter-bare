@@ -235,6 +235,15 @@ func (q *Query) StartByteForPattern(patIdx uint32) uint32 {
 	return uint32(C.ts_query_start_byte_for_pattern(q.c, C.uint(patIdx)))
 }
 
+// EndByteForPattern returns the byte offset where the given pattern ends
+// in the query's source.
+//
+// This can be useful when combining queries by concatenating their source
+// code strings.
+func (q *Query) EndByteForPattern(patIdx uint32) uint32 {
+	return uint32(C.ts_query_end_byte_for_pattern(q.c, C.uint(patIdx)))
+}
+
 // PredicatesForPattern returns all of the predicates for the given pattern in the query.
 //
 // The predicates are represented as a single array of steps. There are three

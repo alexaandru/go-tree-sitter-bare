@@ -43,7 +43,8 @@ func (c *TreeCursor) close() {
 	c.once.Do(func() { C.ts_tree_cursor_delete(c.c) })
 }
 
-// Reset re-initializes a tree cursor to start at a different node.
+// Reset re-initializes a tree cursor to start at the original node that the cursor was
+// constructed with.
 func (c *TreeCursor) Reset(n *Node) {
 	c.t = n.t
 	C.ts_tree_cursor_reset(c.c, n.c)
