@@ -7,7 +7,7 @@ Go bindings for [tree-sitter](https://github.com/tree-sitter/tree-sitter).
 This repository provides **ONLY** the Go bindings.<br />
 For grammars see [go-sitter-forest](https://github.com/alexaandru/go-sitter-forest).
 
-**STATUS**: Updated to Tree-sitter `v0.22.6`.
+**STATUS**: Updated to Tree-sitter `v0.23.0`.
 
 ## About this fork
 
