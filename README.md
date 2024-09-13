@@ -1,10 +1,8 @@
-# Go Tree-Sitter 🐻, err... it's the other bear (=bare)
+# Go Tree-Sitter bindings
 
 ![Build Status](https://github.com/alexaandru/go-tree-sitter-bare/actions/workflows/ci.yml/badge.svg)
 
-Go bindings for [tree-sitter](https://github.com/tree-sitter/tree-sitter).
-
-This repository provides **ONLY** the Go bindings.<br />
+Provides **ONLY** the Go bindings for [tree-sitter](https://github.com/tree-sitter/tree-sitter).
 For grammars see [go-sitter-forest](https://github.com/alexaandru/go-sitter-forest).
 
 **STATUS**: Updated to Tree-sitter `v0.23.0`.
@@ -39,19 +37,19 @@ still kept them in git history and contribute to the repo size.
 - timely kept up to date with `tree-sitter` updates (including new API calls);
 - tiny, zero deps repo;
 - implemented all API calls from [api.h](api.h) with the exception of WASM;
-- added an automated check (and corresponding github action) to quickly
-  check if we are falling behind [api.h](api.h);
 - reorganized code based on [api.h](api.h) sections and corresponding
   files (i.e. broken down `bindings.go` into [language.go](language.go),
   [parser.go](parser.go), [node.go](node.go), [query.go](query.go),
   [tree.go](tree.go), [tree_cursor.go](tree_cursor.go) and [sitter.go](sitter.go),
   with each file having the code sorted the same way as in `api.h`);
 - synced **Go** funcs' comments with their counterparts from `api.h`;
-- made all `Close()` methods private (as they are not supposed to be
-  called by end users) and replaced their `isBool` with a `sync.Once`;
-- some simplification related to types/params/etc. where it was possible;
 - added return types where they were missing (a few places, where the C
   counterpart would return a bool but the Go wrapper wouldn't);
+- some simplification related to types/params/etc. where it was possible;
+- made all `Close()` methods private (as they are not supposed to be
+  called by end users) and replaced their `isBool` with a `sync.Once`;
+- added an automated check (and corresponding github action) to quickly
+  check if we are falling behind [api.h](api.h);
 - all tests run in parallel (so both faster and acting as an extra,
   indirect check that concurrency works as expected);
 - code cleanup (enabled lots of linters and cleaned up code accordingly).
