@@ -2,10 +2,8 @@
 
 ![Build Status](https://github.com/alexaandru/go-tree-sitter-bare/actions/workflows/ci.yml/badge.svg)
 
-Provides **ONLY** the Go bindings for [tree-sitter](https://github.com/tree-sitter/tree-sitter).
+**ONLY** provides the Go bindings for [tree-sitter](https://github.com/tree-sitter/tree-sitter).
 For grammars see [go-sitter-forest](https://github.com/alexaandru/go-sitter-forest).
-
-**STATUS**: Updated to Tree-sitter `v0.23.0`.
 
 ## About this fork
 
