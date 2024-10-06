@@ -23,6 +23,7 @@ type SymbolType = C.TSSymbolType
 const (
 	SymbolTypeRegular   SymbolType = C.TSSymbolTypeRegular
 	SymbolTypeAnonymous SymbolType = C.TSSymbolTypeAnonymous
+	SymbolTypeSupertype SymbolType = C.TSSymbolTypeSupertype
 	SymbolTypeAuxiliary SymbolType = C.TSSymbolTypeAuxiliary
 )
 
@@ -155,8 +156,22 @@ func (n Node) Parent() *Node {
 }
 
 // ChildContainingDescendant returns the node's child that contains `descendant`.
+// Deprecated: use [`ts_node_contains_descendant`] instead, this will be removed in 0.25
+//
+// Get the node's child containing `descendant`. This will not return
+// the descendant if it is a direct child of `self`, for that use
+// `ts_node_contains_descendant`.
 func (n Node) ChildContainingDescendant(d *Node) *Node {
 	nn := C.ts_node_child_containing_descendant(n.c, d.c)
+	return n.t.cachedNode(nn)
+}
+
+// ChildWithDescendant returns the node that contains `descendant`.
+//
+// NOTE: that this can return `descendant` itself, unlike the deprecated function
+// [`ts_node_child_containing_descendant`].
+func (n Node) ChildWithDescendant(d *Node) *Node {
+	nn := C.ts_node_child_with_descendant(n.c, d.c)
 	return n.t.cachedNode(nn)
 }
 
@@ -171,6 +186,12 @@ func (n Node) Child(idx uint32) *Node {
 // or "" if not named.
 func (n Node) FieldNameForChild(idx int) string {
 	return C.GoString(C.ts_node_field_name_for_child(n.c, C.uint(idx)))
+}
+
+// FieldNameForNamedChild returns the field name for node's named child at the given index, where zero
+// represents the first named child. Returns NULL, if no field is found.
+func (n Node) FieldNameForNamedChild(idx uint32) string {
+	return C.GoString(C.ts_node_field_name_for_named_child(n.c, C.uint(idx)))
 }
 
 // ChildCount returns the node's number of children.

@@ -197,6 +197,16 @@ func TestQueryCursorSetMatchLimit(t *testing.T) {
 	t.Skip("TODO")
 }
 
+func TestQueryCursorSetTimeout(t *testing.T) {
+	t.Parallel()
+	t.Skip("TODO")
+}
+
+func TestQueryCursorTimeout(t *testing.T) {
+	t.Parallel()
+	t.Skip("TODO")
+}
+
 func TestQueryCursorSetByteRange(t *testing.T) {
 	t.Parallel()
 	t.Skip("TODO")

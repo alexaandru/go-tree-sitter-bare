@@ -557,9 +557,9 @@ TSNode ts_node_parent(TSNode self) {
   return node;
 }
 
-TSNode ts_node_child_containing_descendant(TSNode self, TSNode subnode) {
-  uint32_t start_byte = ts_node_start_byte(subnode);
-  uint32_t end_byte = ts_node_end_byte(subnode);
+TSNode ts_node_child_containing_descendant(TSNode self, TSNode descendant) {
+  uint32_t start_byte = ts_node_start_byte(descendant);
+  uint32_t end_byte = ts_node_end_byte(descendant);
 
   do {
     NodeChildIterator iter = ts_node_iterate_children(&self);
@@ -567,7 +567,7 @@ TSNode ts_node_child_containing_descendant(TSNode self, TSNode subnode) {
       if (
         !ts_node_child_iterator_next(&iter, &self)
         || ts_node_start_byte(self) > start_byte
-        || self.id == subnode.id
+        || self.id == descendant.id
       ) {
         return ts_node__null();
       }
@@ -578,14 +578,54 @@ TSNode ts_node_child_containing_descendant(TSNode self, TSNode subnode) {
       TSNode old = self;
       // While the next sibling is a zero-width token
       while (ts_node_child_iterator_next_sibling_is_empty_adjacent(&iter, self)) {
-        TSNode current_node = ts_node_child_containing_descendant(self, subnode);
+        TSNode current_node = ts_node_child_containing_descendant(self, descendant);
         // If the target child is in self, return it
         if (!ts_node_is_null(current_node)) {
           return current_node;
         }
         ts_node_child_iterator_next(&iter, &self);
-        if (self.id == subnode.id) {
+        if (self.id == descendant.id) {
           return ts_node__null();
+        }
+      }
+      self = old;
+    } while (iter.position.bytes < end_byte || ts_node_child_count(self) == 0);
+  } while (!ts_node__is_relevant(self, true));
+
+  return self;
+}
+
+TSNode ts_node_child_with_descendant(TSNode self, TSNode descendant) {
+  uint32_t start_byte = ts_node_start_byte(descendant);
+  uint32_t end_byte = ts_node_end_byte(descendant);
+
+  do {
+    NodeChildIterator iter = ts_node_iterate_children(&self);
+    do {
+      if (
+        !ts_node_child_iterator_next(&iter, &self)
+        || ts_node_start_byte(self) > start_byte
+      ) {
+        return ts_node__null();
+      }
+      if (self.id == descendant.id) {
+        return self;
+      }
+
+      // Here we check the current self node and *all* of its zero-width token siblings that follow.
+      // If any of these nodes contain the target subnode, we return that node. Otherwise, we restore the node we started at
+      // for the loop condition, and that will continue with the next *non-zero-width* sibling.
+      TSNode old = self;
+      // While the next sibling is a zero-width token
+      while (ts_node_child_iterator_next_sibling_is_empty_adjacent(&iter, self)) {
+        TSNode current_node = ts_node_child_with_descendant(self, descendant);
+        // If the target child is in self, return it
+        if (!ts_node_is_null(current_node)) {
+          return current_node;
+        }
+        ts_node_child_iterator_next(&iter, &self);
+        if (self.id == descendant.id) {
+          return self;
         }
       }
       self = old;
@@ -723,6 +763,48 @@ const char *ts_node_field_name_for_child(TSNode self, uint32_t child_index) {
           did_descend = true;
           result = child;
           child_index = grandchild_index;
+          break;
+        }
+        index += grandchild_count;
+      }
+    }
+  }
+
+  return NULL;
+}
+
+const char *ts_node_field_name_for_named_child(TSNode self, uint32_t named_child_index) {
+  TSNode result = self;
+  bool did_descend = true;
+  const char *inherited_field_name = NULL;
+
+  while (did_descend) {
+    did_descend = false;
+
+    TSNode child;
+    uint32_t index = 0;
+    NodeChildIterator iterator = ts_node_iterate_children(&result);
+    while (ts_node_child_iterator_next(&iterator, &child)) {
+      if (ts_node__is_relevant(child, false)) {
+        if (index == named_child_index) {
+          if (ts_node_is_extra(child)) {
+            return NULL;
+          }
+          const char *field_name = ts_node__field_name_from_language(result, iterator.structural_child_index - 1);
+          if (field_name) return field_name;
+          return inherited_field_name;
+        }
+        index++;
+      } else {
+        uint32_t named_grandchild_index = named_child_index - index;
+        uint32_t grandchild_count = ts_node__relevant_child_count(child, false);
+        if (named_grandchild_index < grandchild_count) {
+          const char *field_name = ts_node__field_name_from_language(result, iterator.structural_child_index - 1);
+          if (field_name) inherited_field_name = field_name;
+
+          did_descend = true;
+          result = child;
+          named_child_index = named_grandchild_index;
           break;
         }
         index += grandchild_count;

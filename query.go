@@ -415,6 +415,22 @@ func (c *QueryCursor) SetMatchLimit(limit uint32) {
 	C.ts_query_cursor_set_match_limit(c.c, C.uint(limit))
 }
 
+// SetTimeout sets the maximum duration in microseconds that query execution should be allowed to
+// take before halting.
+//
+// If query execution takes longer than this, it will halt early, returning NULL.
+// See [`ts_query_cursor_next_match`] or [`ts_query_cursor_next_capture`] for more information.
+func (c *QueryCursor) SetTimeout(micros int) {
+	C.ts_query_cursor_set_timeout_micros(c.c, C.ulong(micros))
+}
+
+// Timeout returns the duration in microseconds that query execution is allowed to take.
+//
+// This is set via [`ts_query_cursor_set_timeout_micros`].
+func (c *QueryCursor) Timeout() (micros int) {
+	return int(C.ts_query_cursor_timeout_micros(c.c))
+}
+
 // SetByteRange sets the range of bytes in which the query will be executed.
 func (c *QueryCursor) SetByteRange(start, end uint32) {
 	C.ts_query_cursor_set_byte_range(c.c, C.uint(start), C.uint(end))

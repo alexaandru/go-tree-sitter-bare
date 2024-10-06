@@ -173,7 +173,7 @@ func TestNodeParent(t *testing.T) {
 	t.Skip("tested implicitly")
 }
 
-func TestNodeChildContainingDescendant(t *testing.T) {
+func TestNodeChildContainingDescendant(t *testing.T) { //nolint:dupl // OK
 	t.Parallel()
 
 	input := []byte(`1 + 2`)
@@ -223,6 +223,56 @@ func TestNodeChildContainingDescendant(t *testing.T) {
 	}
 }
 
+func TestNodeChildWithDescendant(t *testing.T) { //nolint:dupl // OK
+	t.Parallel()
+
+	input := []byte(`1 + 2`)
+
+	root, err := Parse(context.Background(), input, gr)
+	if err != nil {
+		t.Fatal("Expected no error, got", err)
+	}
+
+	c := NewTreeCursor(root)
+	if c.CurrentNode() != root {
+		t.Fatal("Expected current node to be root")
+	}
+
+	c.GoToFirstChild()
+
+	n := c.CurrentNode()
+
+	exp := "(sum left: (expression (number)) right: (expression (number)))"
+	if act := n.String(); act != exp {
+		t.Fatalf("Expected %q, got %q", exp, act)
+	}
+
+	c.GoToFirstChild()
+	c.GoToNextSibling()
+	c.GoToNextSibling()
+	c.GoToFirstChild()
+
+	d := c.CurrentNode()
+
+	exp = "(number)"
+	if act := d.String(); act != exp {
+		t.Fatalf("Expected %q, got %q", exp, act)
+	}
+
+	c.GoToParent()
+
+	p := c.CurrentNode()
+
+	exp = "(expression (number))"
+	if act := p.String(); act != exp {
+		t.Fatalf("Expected %q, got %q", exp, act)
+	}
+
+	if act := n.ChildWithDescendant(d); act != p {
+		t.Fatalf("Expected %v, got %v", p, act)
+	}
+}
+
 func TestNodeChild(t *testing.T) {
 	t.Parallel()
 	t.Skip("tested implicitly")
@@ -231,6 +281,11 @@ func TestNodeChild(t *testing.T) {
 func TestNodeFieldNameForChild(t *testing.T) {
 	t.Parallel()
 	t.Skip("tested implicitly")
+}
+
+func TestNodeFieldNameForNamedChild(t *testing.T) {
+	t.Parallel()
+	t.Skip("TODO")
 }
 
 func TestNodeChildCount(t *testing.T) {

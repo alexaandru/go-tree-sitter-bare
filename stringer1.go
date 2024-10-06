@@ -10,12 +10,13 @@ func _() {
 	var x [1]struct{}
 	_ = x[SymbolTypeRegular-0]
 	_ = x[SymbolTypeAnonymous-1]
-	_ = x[SymbolTypeAuxiliary-2]
+	_ = x[SymbolTypeSupertype-2]
+	_ = x[SymbolTypeAuxiliary-3]
 }
 
-const _SymbolType_name = "RegularAnonymousAuxiliary"
+const _SymbolType_name = "RegularAnonymousSupertypeAuxiliary"
 
-var _SymbolType_index = [...]uint8{0, 7, 16, 25}
+var _SymbolType_index = [...]uint8{0, 7, 16, 25, 34}
 
 func (i SymbolType) String() string {
 	if i >= SymbolType(len(_SymbolType_index)-1) {
