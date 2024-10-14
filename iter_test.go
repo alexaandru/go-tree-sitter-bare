@@ -51,11 +51,11 @@ func TestIteratorNext(t *testing.T) {
 			act := []string{}
 			ii := NewIterator(root, tc.mode)
 
-			var nn *Node
+			var nn Node
 
 			for {
 				nn, err = ii.Next()
-				if err != nil || nn == nil {
+				if err != nil || nn == zeroNode {
 					break
 				}
 
@@ -89,7 +89,7 @@ func TestIteratorForEach(t *testing.T) {
 
 			act := []string{}
 
-			err = NewIterator(root, tc.mode).ForEach(func(nn *Node) error {
+			err = NewIterator(root, tc.mode).ForEach(func(nn Node) error {
 				act = append(act, fmt.Sprintf("%s [%s]", nn.Content(input), nn.Type()))
 				return nil
 			})

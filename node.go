@@ -10,7 +10,6 @@ import "unsafe"
 // as well as its relation to other nodes like its parent, siblings and children.
 type Node struct {
 	c C.TSNode
-	t *Tree // keep pointer on tree because node is valid only as long as tree is
 }
 
 // Symbol indicates the symbol.
@@ -26,6 +25,14 @@ const (
 	SymbolTypeSupertype SymbolType = C.TSSymbolTypeSupertype
 	SymbolTypeAuxiliary SymbolType = C.TSSymbolTypeAuxiliary
 )
+
+func newNode(ptr C.TSNode) (n Node) {
+	if ptr.id == nil {
+		return
+	}
+
+	return Node{c: ptr}
+}
 
 // Type returns the node's type.
 func (n Node) Type() string {
@@ -56,8 +63,8 @@ func (n Node) GrammarSymbol() Symbol {
 }
 
 // StartByte returns the node's start byte.
-func (n Node) StartByte() uint32 {
-	return uint32(C.ts_node_start_byte(n.c))
+func (n Node) StartByte() uint {
+	return uint(C.ts_node_start_byte(n.c))
 }
 
 // StartPoint returns the node's start position in terms of rows and columns.
@@ -66,8 +73,8 @@ func (n Node) StartPoint() Point {
 }
 
 // EndByte returns the node's end byte.
-func (n Node) EndByte() uint32 {
-	return uint32(C.ts_node_end_byte(n.c))
+func (n Node) EndByte() uint {
+	return uint(C.ts_node_end_byte(n.c))
 }
 
 // EndPoint returns the node's end position in terms of rows and columns.
@@ -150,9 +157,8 @@ func (n Node) NextParseState() StateID {
 //
 // Prefer `ts_node_child_containing_descendant` for
 // iterating over the node's ancestors.
-func (n Node) Parent() *Node {
-	nn := C.ts_node_parent(n.c)
-	return n.t.cachedNode(nn)
+func (n Node) Parent() Node {
+	return newNode(C.ts_node_parent(n.c))
 }
 
 // ChildContainingDescendant returns the node's child that contains `descendant`.
@@ -161,25 +167,22 @@ func (n Node) Parent() *Node {
 // Get the node's child containing `descendant`. This will not return
 // the descendant if it is a direct child of `self`, for that use
 // `ts_node_contains_descendant`.
-func (n Node) ChildContainingDescendant(d *Node) *Node {
-	nn := C.ts_node_child_containing_descendant(n.c, d.c)
-	return n.t.cachedNode(nn)
+func (n Node) ChildContainingDescendant(d Node) Node {
+	return newNode(C.ts_node_child_containing_descendant(n.c, d.c))
 }
 
 // ChildWithDescendant returns the node that contains `descendant`.
 //
 // NOTE: that this can return `descendant` itself, unlike the deprecated function
 // [`ts_node_child_containing_descendant`].
-func (n Node) ChildWithDescendant(d *Node) *Node {
-	nn := C.ts_node_child_with_descendant(n.c, d.c)
-	return n.t.cachedNode(nn)
+func (n Node) ChildWithDescendant(d Node) Node {
+	return newNode(C.ts_node_child_with_descendant(n.c, d.c))
 }
 
 // Child returns the node's child at the given index, where zero represents the
 // first child.
-func (n Node) Child(idx uint32) *Node {
-	nn := C.ts_node_child(n.c, C.uint(idx))
-	return n.t.cachedNode(nn)
+func (n Node) Child(idx uint32) Node {
+	return newNode(C.ts_node_child(n.c, C.uint(idx)))
 }
 
 // FieldNameForChild returns the field name of the child at the given index,
@@ -202,9 +205,8 @@ func (n Node) ChildCount() uint32 {
 // NamedChild returns the node's *named* child at the given index.
 //
 // See also `ts_node_is_named`.
-func (n Node) NamedChild(idx uint32) *Node {
-	nn := C.ts_node_named_child(n.c, C.uint(idx))
-	return n.t.cachedNode(nn)
+func (n Node) NamedChild(idx uint32) Node {
+	return newNode(C.ts_node_named_child(n.c, C.uint(idx)))
 }
 
 // NamedChildCount returns the node's number of *named* children.
@@ -215,60 +217,51 @@ func (n Node) NamedChildCount() uint32 {
 }
 
 // ChildByFieldName returns the node's child with the given field name.
-func (n Node) ChildByFieldName(name string) *Node {
+func (n Node) ChildByFieldName(name string) Node {
 	str := C.CString(name)
 	defer C.free(unsafe.Pointer(str))
 
-	nn := C.ts_node_child_by_field_name(n.c, str, C.uint(len(name)))
-
-	return n.t.cachedNode(nn)
+	return newNode(C.ts_node_child_by_field_name(n.c, str, C.uint(len(name))))
 }
 
 // ChildByFieldID returns the node's child with the given numerical field id.
 //
 // You can convert a field name to an id using the
 // `ts_language_field_id_for_name` function.
-func (n Node) ChildByFieldID(id FieldID) *Node {
-	nn := C.ts_node_child_by_field_id(n.c, id)
-	return n.t.cachedNode(nn)
+func (n Node) ChildByFieldID(id FieldID) Node {
+	return newNode(C.ts_node_child_by_field_id(n.c, id))
 }
 
 // NextSibling returns the node's next sibling.
-func (n Node) NextSibling() *Node {
-	nn := C.ts_node_next_sibling(n.c)
-	return n.t.cachedNode(nn)
+func (n Node) NextSibling() Node {
+	return newNode(C.ts_node_next_sibling(n.c))
 }
 
 // PrevSibling returns the node's previous sibling.
-func (n Node) PrevSibling() *Node {
-	nn := C.ts_node_prev_sibling(n.c)
-	return n.t.cachedNode(nn)
+func (n Node) PrevSibling() Node {
+	return newNode(C.ts_node_prev_sibling(n.c))
 }
 
 // NextNamedSibling returns the node's next *named* sibling.
-func (n Node) NextNamedSibling() *Node {
-	nn := C.ts_node_next_named_sibling(n.c)
-	return n.t.cachedNode(nn)
+func (n Node) NextNamedSibling() Node {
+	return newNode(C.ts_node_next_named_sibling(n.c))
 }
 
 // PrevNamedSibling returns the node's previous *named* sibling.
-func (n Node) PrevNamedSibling() *Node {
-	nn := C.ts_node_prev_named_sibling(n.c)
-	return n.t.cachedNode(nn)
+func (n Node) PrevNamedSibling() Node {
+	return newNode(C.ts_node_prev_named_sibling(n.c))
 }
 
 // FirstChildForByte returns the node's first child that extends beyond the
 // given byte offset.
-func (n Node) FirstChildForByte(ofs uint32) *Node {
-	nn := C.ts_node_first_child_for_byte(n.c, C.uint(ofs))
-	return n.t.cachedNode(nn)
+func (n Node) FirstChildForByte(ofs uint32) Node {
+	return newNode(C.ts_node_first_child_for_byte(n.c, C.uint(ofs)))
 }
 
 // FirstNamedChildForByte returns the node's first named child that extends
 // beyond the given byte offset.
-func (n Node) FirstNamedChildForByte(ofs uint32) *Node {
-	nn := C.ts_node_first_named_child_for_byte(n.c, C.uint(ofs))
-	return n.t.cachedNode(nn)
+func (n Node) FirstNamedChildForByte(ofs uint32) Node {
+	return newNode(C.ts_node_first_named_child_for_byte(n.c, C.uint(ofs)))
 }
 
 // DescendantCount returns the node's number of descendants, including one
@@ -279,30 +272,26 @@ func (n Node) DescendantCount() uint32 {
 
 // DescendantForByteRange returns the smallest node within this node that spans
 // the given range of bytes.
-func (n Node) DescendantForByteRange(start, end uint32) *Node {
-	nn := C.ts_node_descendant_for_byte_range(n.c, C.uint(start), C.uint(end))
-	return n.t.cachedNode(nn)
+func (n Node) DescendantForByteRange(start, end uint32) Node {
+	return newNode(C.ts_node_descendant_for_byte_range(n.c, C.uint(start), C.uint(end)))
 }
 
 // DescendantForPointRange returns the smallest node within this node that spans
 // the given range of {row, column} positions.
-func (n Node) DescendantForPointRange(start, end Point) *Node {
-	nn := C.ts_node_descendant_for_point_range(n.c, start.c(), end.c())
-	return n.t.cachedNode(nn)
+func (n Node) DescendantForPointRange(start, end Point) Node {
+	return newNode(C.ts_node_descendant_for_point_range(n.c, start.c(), end.c()))
 }
 
 // NamedDescendantForByteRange returns the smallest named node within this node
 // that spans the given range of bytes.
-func (n Node) NamedDescendantForByteRange(start, end uint32) *Node {
-	nn := C.ts_node_named_descendant_for_byte_range(n.c, C.uint(start), C.uint(end))
-	return n.t.cachedNode(nn)
+func (n Node) NamedDescendantForByteRange(start, end uint32) Node {
+	return newNode(C.ts_node_named_descendant_for_byte_range(n.c, C.uint(start), C.uint(end)))
 }
 
 // NamedDescendantForPointRange returns the smallest named node within this node
 // that spans the given range of row/column positions.
-func (n Node) NamedDescendantForPointRange(start, end Point) *Node {
-	nn := C.ts_node_named_descendant_for_point_range(n.c, start.c(), end.c())
-	return n.t.cachedNode(nn)
+func (n Node) NamedDescendantForPointRange(start, end Point) Node {
+	return newNode(C.ts_node_named_descendant_for_point_range(n.c, start.c(), end.c()))
 }
 
 // Edit the node to keep it in-sync with source code that has been edited.
@@ -317,7 +306,7 @@ func (n Node) Edit(i InputEdit) {
 }
 
 // Equal checks if two nodes are identical.
-func (n Node) Equal(other *Node) bool {
+func (n Node) Equal(other Node) bool {
 	return bool(C.ts_node_eq(n.c, other.c))
 }
 

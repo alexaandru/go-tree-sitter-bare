@@ -102,6 +102,10 @@ linters-settings:
   predeclared:
     ignore: ""
     q: false
+  revive:
+    rules:
+      - name: exported
+        disabled: true # TODO: Enable this check.
   nlreturn:
     block-size: 2
   nolintlint:
@@ -152,8 +156,9 @@ linters-settings:
       - f *os.File
       - g *errgroup.Group
       - q *Query
-      - n *Node
+      - n Node
       - m *QueryMatch
+      - c *QueryCursor
   wsl:
     severity: warning
     strict-append: true

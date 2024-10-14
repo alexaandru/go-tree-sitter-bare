@@ -23,7 +23,10 @@ const (
 )
 
 //nolint:gochecknoglobals // ok
-var gr = getTestGrammar()
+var (
+	gr       = getTestGrammar()
+	zeroNode Node
+)
 
 // github.com/alexaandru/go-tree-sitter-bare/sitter.go:18:		Parse				83.3%
 // github.com/alexaandru/go-tree-sitter-bare/sitter.go:31:		NewLanguage			66.7%
@@ -74,30 +77,30 @@ func TestRootNode(t *testing.T) {
 		t.Fatalf("Expected n.NamedChildCount() == 1, got %d", x)
 	}
 
-	for _, fn := range []func() *Node{
+	for _, fn := range []func() Node{
 		n.Parent, n.NextSibling, n.NextNamedSibling, n.PrevSibling, n.PrevNamedSibling,
-		func() *Node { return n.ChildByFieldName("unknown") },
+		func() Node { return n.ChildByFieldName("unknown") },
 	} {
 		name := nameOf(fn)
 
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			if x := fn(); x != nil {
+			if x := fn(); x != zeroNode {
 				t.Fatalf("Expected n.%s() == nil, got %v", name, x)
 			}
 		})
 	}
 
-	if n.Child(0) == nil {
+	if n.Child(0) == zeroNode {
 		t.Fatalf("Expected n.Child(0) to not be nil")
 	}
 
-	if n.NamedChild(0) == nil {
+	if n.NamedChild(0) == zeroNode {
 		t.Fatalf("Expected n.NamedChild(0) to not be nil")
 	}
 
-	if n.NamedChild(0).ChildByFieldName("left") == nil {
+	if n.NamedChild(0).ChildByFieldName("left") == zeroNode {
 		t.Fatalf(`Expected n.NamedChild(0).ChildByFieldName("left") to not be nil`)
 	}
 }
@@ -173,7 +176,7 @@ func TestTree(t *testing.T) {
 		},
 	})
 
-	rngExp := []Range{{EndPoint: Point{Row: maxUint32, Column: maxUint32}, EndByte: maxUint32}}
+	rngExp := []Range{{EndPoint: Point{Row: uint(maxUint32), Column: uint(maxUint32)}, EndByte: uint(maxUint32)}}
 	// Testing that it doesn't crash, as it involves a `C.free()`.
 	for range 10_000 {
 		if act := tree.IncludedRanges(); !slices.Equal(rngExp, act) {
@@ -211,7 +214,7 @@ func TestTree(t *testing.T) {
 	}
 
 	descendantNode := n.NamedDescendantForPointRange(Point{Row: 0, Column: 5}, Point{Row: 0, Column: 11})
-	if descendantNode == nil {
+	if descendantNode == zeroNode {
 		t.Fatalf("Expected descendent node to not be nil")
 	}
 
@@ -533,19 +536,19 @@ func TestQuery(t *testing.T) {
 
 	root := tree.RootNode()
 
-	q, err := NewQuery([]byte("(sum) (number)"), gr)
+	q, err := NewQuery(gr, []byte("(sum) (number)"))
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}
 
 	qc := NewQueryCursor()
-	qc.Exec(q, root)
+	mx := qc.Matches(q, root, []byte(js))
 
 	var matched int
 
 	for {
-		_, ok := qc.NextMatch()
-		if !ok {
+		m := mx.Next()
+		if m == nil {
 			break
 		}
 
@@ -561,7 +564,7 @@ func TestQuery(t *testing.T) {
 func TestQueryError(t *testing.T) {
 	t.Parallel()
 
-	q, err := NewQuery([]byte("((unknown) name: (identifier))"), gr)
+	q, err := NewQuery(gr, []byte("((unknown) name: (identifier))"))
 	if q != nil {
 		t.Fatal("Expected q to be nil, got", q)
 	}
@@ -570,11 +573,12 @@ func TestQueryError(t *testing.T) {
 		t.Fatal("Expected error to not be nil")
 	}
 
-	exp := DetailedQueryError{
-		Offset:  2,
-		Type:    QueryErrorNodeType,
-		Message: "invalid NodeType 'unknown' at line 1 column 0",
+	exp := QueryError{
+		Point:   Point{Column: 2},
+		Kind:    QueryErrorNodeType,
+		Message: "unknown",
 	}
+
 	if err.Error() != exp.Error() {
 		t.Fatal("Error is not the expected QueryError:", err)
 	}
@@ -640,7 +644,7 @@ func TestTreeCursor(t *testing.T) { //nolint:tparallel // we test a specific nav
 		t.Fatal("Expected current field name to be empty")
 	}
 
-	var nodeForReset *Node
+	var nodeForReset Node
 
 	firstChild100 := func() bool { return c.GoToFirstChildForByte(100) == -1 }
 	captureNodeForReset := func() bool { nodeForReset = c.CurrentNode(); return true }
@@ -861,41 +865,6 @@ func TestLeakParseInput(t *testing.T) {
 	}
 }
 
-// see https://github.com/smacker/go-tree-sitter/issues/75
-func TestCursorKeepsQuery(t *testing.T) {
-	t.Parallel()
-
-	source := bytes.Repeat([]byte("1 + 1"), 10000)
-
-	parser := NewParser()
-	parser.SetLanguage(gr)
-
-	tree, err := parser.ParseString(context.TODO(), nil, source)
-	if err != nil {
-		t.Fatal("Expected no error, got", err)
-	}
-
-	root := tree.RootNode()
-
-	for range 100 {
-		query, _ := NewQuery( //nolint:errcheck // ok
-			[]byte("(number) @match"),
-			gr,
-		)
-
-		qc := NewQueryCursor()
-
-		qc.Exec(query, root)
-
-		for { // ensure qc.NextMatch() doesn't  cause a segfault
-			match, exists := qc.NextMatch()
-			if !exists || match == nil {
-				break
-			}
-		}
-	}
-}
-
 func BenchmarkParse(b *testing.B) {
 	parser := NewParser()
 	parser.SetLanguage(gr)
@@ -948,7 +917,7 @@ func BenchmarkParseInput(b *testing.B) {
 	}
 }
 
-func testStartEnd(t *testing.T, n *Node, startByte, endByte, startCol, startRow, endRow, endCol uint32) {
+func testStartEnd(t *testing.T, n Node, startByte, endByte, startCol, startRow, endRow, endCol uint) {
 	t.Helper()
 
 	if x := n.StartByte(); x != startByte {
@@ -983,19 +952,19 @@ func testCaptures(t *testing.T, body, sq string, exp []string) {
 
 	root := tree.RootNode()
 
-	q, err := NewQuery([]byte(sq), gr)
+	q, err := NewQuery(gr, []byte(sq))
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}
 
 	qc := NewQueryCursor()
-	qc.Exec(q, root)
+	mx := qc.Matches(q, root, []byte(body))
 
 	act := []string{}
 
 	for {
-		m, ok := qc.NextMatch()
-		if !ok {
+		m := mx.Next()
+		if m == nil {
 			break
 		}
 
@@ -1009,14 +978,14 @@ func testCaptures(t *testing.T, body, sq string, exp []string) {
 	}
 }
 
-func isNamedWithGC(n *Node) bool {
+func isNamedWithGC(n Node) bool {
 	runtime.GC()
 	time.Sleep(500 * time.Microsecond)
 
 	return n.IsNamed()
 }
 
-func doWorkLifetime(tb testing.TB, n *Node) {
+func doWorkLifetime(tb testing.TB, n Node) {
 	tb.Helper()
 
 	for range 100 {

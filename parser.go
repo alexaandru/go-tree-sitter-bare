@@ -336,7 +336,7 @@ func (p *Parser) convertTSTree(ctx context.Context, tsTree *C.TSTree) (t *Tree, 
 		return nil, ErrOperationLimit
 	}
 
-	return p.newTree(tsTree), nil
+	return newTree(tsTree), nil
 }
 
 func (m *readFuncsMap) register(f ReadFunc) (id int) {

@@ -13,7 +13,6 @@ import (
 // on a certain syntax node, and can be moved imperatively to different nodes.
 type TreeCursor struct {
 	c    *C.TSTreeCursor
-	t    *Tree
 	once sync.Once
 }
 
@@ -22,12 +21,12 @@ type TreeCursor struct {
 // A tree cursor allows you to walk a syntax tree more efficiently than is
 // possible using the [`TSNode`] functions. It is a mutable object that is always
 // on a certain syntax node, and can be moved imperatively to different nodes.
-func NewTreeCursor(n *Node) (c *TreeCursor) {
-	return newTreeCursor(n.t, C.ts_tree_cursor_new(n.c))
+func NewTreeCursor(n Node) (c *TreeCursor) {
+	return newTreeCursor(C.ts_tree_cursor_new(n.c))
 }
 
-func newTreeCursor(t *Tree, cc C.struct_TSTreeCursor) (c *TreeCursor) {
-	c = &TreeCursor{c: &cc, t: t}
+func newTreeCursor(cc C.struct_TSTreeCursor) (c *TreeCursor) {
+	c = &TreeCursor{c: &cc}
 
 	runtime.SetFinalizer(c, (*TreeCursor).close)
 
@@ -45,8 +44,7 @@ func (c *TreeCursor) close() {
 
 // Reset re-initializes a tree cursor to start at the original node that the cursor was
 // constructed with.
-func (c *TreeCursor) Reset(n *Node) {
-	c.t = n.t
+func (c *TreeCursor) Reset(n Node) {
 	C.ts_tree_cursor_reset(c.c, n.c)
 }
 
@@ -59,9 +57,8 @@ func (c *TreeCursor) ResetTo(src *TreeCursor) {
 }
 
 // CurrentNode returns the cursor's current node.
-func (c *TreeCursor) CurrentNode() *Node {
-	n := C.ts_tree_cursor_current_node(c.c)
-	return c.t.cachedNode(n)
+func (c *TreeCursor) CurrentNode() Node {
+	return newNode(C.ts_tree_cursor_current_node(c.c))
 }
 
 // CurrentFieldName gets the field name of the tree cursor's current node.
@@ -168,5 +165,5 @@ func (c *TreeCursor) GoToFirstChildForPoint(p Point) int64 {
 
 // Copy returns a copy of the tree cursor.
 func (c *TreeCursor) Copy() *TreeCursor {
-	return newTreeCursor(c.t, C.ts_tree_cursor_copy(c.c))
+	return newTreeCursor(C.ts_tree_cursor_copy(c.c))
 }

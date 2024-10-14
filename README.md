@@ -5,10 +5,14 @@
 **ONLY** provides the Go bindings for [tree-sitter](https://github.com/tree-sitter/tree-sitter).
 For grammars see [go-sitter-forest](https://github.com/alexaandru/go-sitter-forest).
 
-## About this fork
+## Origins & Credits
 
-This is a "fork" of @smacker's [go-tree-sitter](https://github.com/smacker/go-tree-sitter),
-read below to find out Why and How?
+This originally started as a "fork" of @smacker's [go-tree-sitter](https://github.com/smacker/go-tree-sitter),
+read below to find out Why and How? It also recently adopted the
+[query.go](https://github.com/tree-sitter/go-tree-sitter/blob/master/query.go)
+from [go-tree-sitter](https://github.com/tree-sitter/go-tree-sitter)
+so that we can filter captures/matches implicitly (no more need to
+call `FilterPredicates()`).
 
 ### Why
 
@@ -18,6 +22,11 @@ the parsers as I have created [my own repo](https://github.com/alexaandru/go-sit
 (also based on @smacker's work, but I needed a lot more parsers) and that
 repo is itself 1.4GB already, so I didn't need another 200MB dependency
 on sitter, when the actual code is less than 2MB.
+
+Technically, the [go-tree-sitter](https://github.com/tree-sitter/go-tree-sitter)
+is now a viable alternative, in the sense that it does only offer the
+bindings alone. Still, at 20MB in size is 20x times larger than this
+repo. I may still keep my fork, we'll see...
 
 ### How
 
@@ -65,10 +74,12 @@ import (
 	"github.com/alexaandru/go-sitter-forest/javascript"
 )
 
-parser := sitter.NewParser()
-ok := parser.SetLanguage(sitter.NewLanguage(javascript.GetLanguage()))
-if !ok {
-    panic("cannot set language")
+var parser = sitter.NewParser()
+
+func init() {
+    if ok := parser.SetLanguage(sitter.NewLanguage(javascript.GetLanguage())); !ok {
+        panic("cannot set language")
+    }
 }
 ```
 
@@ -123,12 +134,27 @@ You can filter AST by using [predicate](https://tree-sitter.github.io/tree-sitte
 
 Similar to [Rust](https://github.com/tree-sitter/tree-sitter/tree/master/lib/binding_rust) or [WebAssembly](https://github.com/tree-sitter/tree-sitter/blob/master/lib/binding_web) bindings we support filtering on a few common predicates:
 
-- `eq?`, `not-eq?`
-- `match?`, `not-match?`
+- `[any-][not-]eq?`,
+- `[any-][not-]match?`,
+- `[not-]any-of?`,
+- `set?`,
+- `is[-not]?`,
+- and a default/catchall that simply saves the predicate op/args for later use,
+  in `Query.generalPredicates`
 
 Usage example:
 
 ```go
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/alexaandru/go-sitter-forest/javascript"
+	sitter "github.com/alexaandru/go-tree-sitter-bare"
+)
+
 func main() {
 	// Javascript code
 	sourceCode := []byte(`
@@ -136,32 +162,33 @@ func main() {
 		const SCREAMING_SNAKE_CASE_CONST = 2;
 		const lower_snake_case_const = 3;`)
 	// Query with predicates
-	screamingSnakeCasePattern := `(
+	query := []byte(`(
 		(identifier) @constant
-		(#match? @constant "^[A-Z][A-Z_]+")
-	)`
+		(#match? @constant "^[A-Z][A-Z_]+"))`)
 
-	// Parse source code
-	lang := javascript.GetLanguage()
-	n, _ := sitter.Parse(context.Background(), sourceCode, sitter.NewLanguage(lang))
-	// Execute the query
-	q, _ := sitter.NewQuery([]byte(screamingSnakeCasePattern), lang)
+	// Get language.
+	langPtr := javascript.GetLanguage()
+	lang := sitter.NewLanguage(langPtr)
+
+	// Parse source code.
+	n, _ := sitter.Parse(context.Background(), sourceCode, lang)
+
+	// Execute the query.
+	q, _ := sitter.NewQuery(lang, query)
 	qc := sitter.NewQueryCursor()
-	qc.Exec(q, n)
-	// Iterate over query results
+
+	matches := qc.Matches(q, n, sourceCode) // or q.Captures()
+
 	for {
-		m, ok := qc.NextMatch()
-		if !ok {
+		m := matches.Next()
+		if m == nil {
 			break
 		}
-		// Apply predicates filtering
-		m = qc.FilterPredicates(m, sourceCode)
+
 		for _, c := range m.Captures {
 			fmt.Println(c.Node.Content(sourceCode))
+			// Output: SCREAMING_SNAKE_CASE_CONST
 		}
 	}
 }
-
-// Output of this program:
-// SCREAMING_SNAKE_CASE_CONST
 ```

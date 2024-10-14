@@ -7,7 +7,7 @@ type IterMode int
 
 // Iterator for a tree of nodes.
 type Iterator struct {
-	toVisit []*Node
+	toVisit []Node
 	mode    IterMode
 	named   bool
 }
@@ -22,22 +22,22 @@ const (
 
 // NewIterator takes a node and mode (DFS/BFS) and returns iterator over
 // children of the node.
-func NewIterator(n *Node, opts ...IterMode) *Iterator {
+func NewIterator(n Node, opts ...IterMode) *Iterator {
 	mode := DFS
 	if len(opts) > 0 {
 		mode = opts[0]
 	}
 
-	return &Iterator{toVisit: []*Node{n}, mode: mode, named: mode > BFS}
+	return &Iterator{toVisit: []Node{n}, mode: mode, named: mode > BFS}
 }
 
 // Next returns the next node in the current iteration.
-func (iter *Iterator) Next() (n *Node, err error) {
+func (iter *Iterator) Next() (n Node, err error) {
 	if len(iter.toVisit) == 0 {
-		return nil, io.EOF
+		return n, io.EOF
 	}
 
-	var children []*Node
+	var children []Node
 
 	n, iter.toVisit = iter.toVisit[0], iter.toVisit[1:]
 
@@ -65,8 +65,8 @@ func (iter *Iterator) Next() (n *Node, err error) {
 
 // ForEach iterates over all nodes, until an error is enconuntered
 // (or there are no more nodes).
-func (iter *Iterator) ForEach(fn func(*Node) error) (err error) {
-	var n *Node
+func (iter *Iterator) ForEach(fn func(Node) error) (err error) {
+	var n Node
 
 	for {
 		if n, err = iter.Next(); err != nil {

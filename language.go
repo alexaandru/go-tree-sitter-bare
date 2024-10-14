@@ -4,6 +4,7 @@ package sitter
 import "C"
 
 import (
+	"fmt"
 	"sync"
 	"unsafe"
 )
@@ -13,6 +14,10 @@ type Language struct {
 	ptr  unsafe.Pointer
 	once sync.Once
 }
+
+// LanguageError represents an error  that occurred when trying to assign
+// an incompatible [TSLanguage] to a [TSParser].
+type LanguageError int
 
 // StateID is used for parser state ID.
 type StateID = C.TSStateId
@@ -96,4 +101,9 @@ func (l *Language) NextState(curr StateID, sym Symbol) StateID {
 
 func (l *Language) c() *C.TSLanguage {
 	return (*C.TSLanguage)(l.ptr)
+}
+
+func (e LanguageError) Error() string {
+	return fmt.Sprintf("Incompatible language version %d. Expected minimum %d, maximum %d",
+		e, C.TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION, C.TREE_SITTER_LANGUAGE_VERSION)
 }

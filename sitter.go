@@ -1,6 +1,6 @@
 //go:generate stringer -type=SymbolType -trimprefix=SymbolType -output=stringer1.go .
 //go:generate stringer -type=IterMode -output=stringer2.go .
-//go:generate stringer -type=QueryError -trimprefix=QueryError -output=stringer3.go .
+//go:generate stringer -type=QueryErrorKind -trimprefix=QueryErrorKind -output=stringer3.go .
 //go:generate stringer -type=QueryPredicateStepType -trimprefix=QueryPredicateStepType -output=stringer4.go .
 
 package sitter
@@ -13,14 +13,14 @@ import (
 	"unsafe"
 )
 
-//nolint:revive,stylecheck // ok
+//nolint:stylecheck // ok
 const (
 	TREE_SITTER_LANGUAGE_VERSION                = int(C.TREE_SITTER_LANGUAGE_VERSION)
 	TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION = int(C.TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION)
 )
 
 // Parse is a shortcut for parsing bytes of source code, returns root node.
-func Parse(ctx context.Context, content []byte, lang *Language) (n *Node, err error) {
+func Parse(ctx context.Context, content []byte, lang *Language) (n Node, err error) {
 	p := NewParser()
 	p.SetLanguage(lang)
 
