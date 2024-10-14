@@ -275,7 +275,9 @@ func TestQueryCursorFilterPredicates(t *testing.T) {
 			p := NewParser()
 			p.SetLanguage(gr)
 
-			tree, err := p.ParseString(context.TODO(), nil, []byte(tc.input))
+			in := []byte(tc.input)
+
+			tree, err := p.ParseString(context.TODO(), nil, in)
 			if err != nil {
 				t.Fatal("Expected no error, got", err)
 			}
@@ -290,18 +292,13 @@ func TestQueryCursorFilterPredicates(t *testing.T) {
 			qc := NewQueryCursor()
 			qc.Exec(q, root)
 
-			before, ok := qc.NextMatch()
+			m, ok := qc.NextMatch(in)
 			if !ok {
 				t.Fatal("Expected a match, got none for", tc.query)
 			}
 
-			if x := len(before.Captures); x != tc.expBefore {
-				t.Fatalf("Expected %d captures before filtering, got %d", tc.expBefore, x)
-			}
-
-			after := qc.FilterPredicates(before, []byte(tc.input))
-			if x := len(after.Captures); x != tc.expAfter {
-				t.Fatalf("Expected %d captures after filtering, got %d", tc.expAfter, x)
+			if x := len(m.Captures); x != tc.expAfter {
+				t.Fatalf("Expected %d captures after (implicit) filtering, got %d", tc.expBefore, x)
 			}
 		})
 	}

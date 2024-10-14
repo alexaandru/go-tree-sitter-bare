@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"regexp"
 	"runtime"
+	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"unsafe"
@@ -34,10 +36,16 @@ type QueryCursor struct {
 type QueryCapture struct {
 	Node  *Node
 	Index uint32
+
+	startRowOffset int
+	startColOffset int
+	endRowOffset   int
+	endColOffset   int
 }
 
 // QueryMatch allows you to iterate over the matches.
 type QueryMatch struct {
+	Properties   map[string]string
 	Captures     []QueryCapture
 	ID           uint32
 	PatternIndex uint16
@@ -372,8 +380,8 @@ func NewQueryCursor() *QueryCursor {
 	return qc
 }
 
-func newQueryMatch[T, U ~uint16 | ~uint32](id T, patternIndex U) *QueryMatch {
-	return &QueryMatch{ID: uint32(id), PatternIndex: uint16(patternIndex)}
+func newQueryMatch[T ~uint32, U ~uint16](id T, patternIndex U) *QueryMatch {
+	return &QueryMatch{ID: uint32(id), PatternIndex: uint16(patternIndex), Properties: map[string]string{}}
 }
 
 // close should be called to ensure that all the memory used by the query cursor is freed.
@@ -445,22 +453,28 @@ func (c *QueryCursor) SetPointRange(start, end Point) {
 // This function will return (nil, false) when there are no more matches.
 // Otherwise, it will populate the QueryMatch with data
 // about which pattern matched and which nodes were captured.
-func (c *QueryCursor) NextMatch() (*QueryMatch, bool) {
+func (c *QueryCursor) NextMatch(input []byte) (*QueryMatch, bool) {
 	var cqm C.TSQueryMatch
 
-	if ok := C.ts_query_cursor_next_match(c.c, &cqm); !bool(ok) { //nolint:gocritic // ok
-		return nil, false
+	for {
+		if ok := C.ts_query_cursor_next_match(c.c, &cqm); !bool(ok) { //nolint:gocritic // ok
+			return nil, false
+		}
+
+		qm := newQueryMatch(cqm.id, cqm.pattern_index)
+
+		for _, cc := range unsafe.Slice(cqm.captures, int(cqm.capture_count)) {
+			idx := uint32(cc.index)
+			node := c.t.cachedNode(cc.node)
+			qm.Captures = append(qm.Captures, QueryCapture{Index: idx, Node: node})
+		}
+
+		if !qm.satisfies(c, input) {
+			continue
+		}
+
+		return qm, true
 	}
-
-	qm := newQueryMatch(cqm.id, cqm.pattern_index)
-
-	for _, cc := range unsafe.Slice(cqm.captures, int(cqm.capture_count)) {
-		idx := uint32(cc.index)
-		node := c.t.cachedNode(cc.node)
-		qm.Captures = append(qm.Captures, QueryCapture{Index: idx, Node: node})
-	}
-
-	return qm, true
 }
 
 // RemoveMatch does smth... TODO
@@ -472,25 +486,31 @@ func (c *QueryCursor) RemoveMatch(matchID uint32) {
 //
 // If there is a capture, write its match to `*match` and its index within
 // the matche's capture list to `*capture_index`. Otherwise, return `false`.
-func (c *QueryCursor) NextCapture() (qm *QueryMatch, idx uint32, ok bool) {
+func (c *QueryCursor) NextCapture(input []byte) (qm *QueryMatch, idx uint32, ok bool) {
 	var (
 		cqm C.TSQueryMatch
 		cqi C.uint
 	)
 
-	if ok = bool(C.ts_query_cursor_next_capture(c.c, &cqm, &cqi)); !ok { //nolint:gocritic // ok
-		return
+	for {
+		if ok = bool(C.ts_query_cursor_next_capture(c.c, &cqm, &cqi)); !ok { //nolint:gocritic // ok
+			return
+		}
+
+		qm = newQueryMatch(cqm.id, cqm.pattern_index)
+
+		for _, cc := range unsafe.Slice(cqm.captures, int(cqm.capture_count)) {
+			idx2 := uint32(cc.index)
+			node := c.t.cachedNode(cc.node)
+			qm.Captures = append(qm.Captures, QueryCapture{Index: idx2, Node: node})
+		}
+
+		if !qm.satisfies(c, input) {
+			return
+		}
+
+		return qm, uint32(cqi), true
 	}
-
-	qm = newQueryMatch(cqm.id, cqm.pattern_index)
-
-	for _, cc := range unsafe.Slice(cqm.captures, int(cqm.capture_count)) {
-		idx2 := uint32(cc.index)
-		node := c.t.cachedNode(cc.node)
-		qm.Captures = append(qm.Captures, QueryCapture{Index: idx2, Node: node})
-	}
-
-	return qm, uint32(cqi), true
 }
 
 // SetMaxStartDepth sets the maximum start depth for a query cursor.
@@ -516,17 +536,14 @@ func (qm *QueryMatch) copy() *QueryMatch {
 }
 
 // FilterPredicates filters the given query match with the applicable predicates.
-func (c *QueryCursor) FilterPredicates(m *QueryMatch, input []byte) (qm *QueryMatch) { //nolint:funlen,gocognit,cyclop,lll // TODO
-	qm = m.copy()
-
+func (qm *QueryMatch) satisfies(c *QueryCursor, input []byte) (matchedAll bool) { //nolint:funlen,gocognit,cyclop,lll // TODO
 	predicates := c.q.PredicatesForPattern(uint32(qm.PatternIndex))
 	if len(predicates) == 0 {
-		qm.Captures = m.Captures
-		return qm
+		return true
 	}
 
 	// Track if we matched all predicates globally.
-	matchedAll := true
+	matchedAll = true
 
 	// Check each predicate against the match.
 	for _, steps := range predicates {
@@ -544,7 +561,7 @@ func (c *QueryCursor) FilterPredicates(m *QueryMatch, input []byte) (qm *QueryMa
 
 				var nodeLeft, nodeRight *Node
 
-				for _, cpt := range m.Captures {
+				for _, cpt := range qm.Captures {
 					captureName := c.q.CaptureNameForID(cpt.Index)
 
 					if captureName == expectedCaptureNameLeft {
@@ -566,7 +583,7 @@ func (c *QueryCursor) FilterPredicates(m *QueryMatch, input []byte) (qm *QueryMa
 			} else {
 				expectedValueRight := c.q.StringValueForID(steps[2].ValueID)
 
-				for _, cpt := range m.Captures {
+				for _, cpt := range qm.Captures {
 					captureName := c.q.CaptureNameForID(cpt.Index)
 
 					if expectedCaptureNameLeft != captureName {
@@ -584,7 +601,7 @@ func (c *QueryCursor) FilterPredicates(m *QueryMatch, input []byte) (qm *QueryMa
 			expectedCaptureName := c.q.CaptureNameForID(steps[1].ValueID)
 			regex := regexp.MustCompile(c.q.StringValueForID(steps[2].ValueID))
 
-			for _, cpt := range m.Captures {
+			for _, cpt := range qm.Captures {
 				captureName := c.q.CaptureNameForID(cpt.Index)
 				if expectedCaptureName != captureName {
 					continue
@@ -595,15 +612,85 @@ func (c *QueryCursor) FilterPredicates(m *QueryMatch, input []byte) (qm *QueryMa
 					break
 				}
 			}
+		case "is?", "is-not?":
+			isPositive := op == "is?"
+			expectedCaptureName := c.q.CaptureNameForID(steps[1].ValueID)
+			expectedValue := c.q.StringValueForID(steps[2].ValueID)
+
+			for _, cpt := range qm.Captures {
+				captureName := c.q.CaptureNameForID(cpt.Index)
+				if expectedCaptureName != captureName {
+					continue
+				}
+
+				if cpt.Node.Type() == expectedValue != isPositive {
+					matchedAll = false
+					break
+				}
+			}
+		case "any-of?":
+			expectedCaptureName := c.q.CaptureNameForID(steps[1].ValueID)
+
+			var values []string
+
+			for _, step := range steps[2:] {
+				values = append(values, c.q.StringValueForID(step.ValueID))
+			}
+
+			for _, cpt := range qm.Captures {
+				captureName := c.q.CaptureNameForID(cpt.Index)
+				if expectedCaptureName != captureName {
+					continue
+				}
+
+				if !slices.Contains(values, cpt.Node.Content(input)) {
+					matchedAll = false
+					break
+				}
+			}
+		case "set!":
+			key := c.q.StringValueForID(steps[1].ValueID)
+			value := c.q.StringValueForID(steps[2].ValueID)
+
+			qm.Properties[key] = value
+		case "set-lang-from-info-string!":
+			expectedCaptureName := c.q.CaptureNameForID(steps[1].ValueID)
+
+			for _, cpt := range qm.Captures {
+				captureName := c.q.CaptureNameForID(cpt.Index)
+				if expectedCaptureName != captureName {
+					continue
+				}
+
+				qm.Properties["injection.language"] = cpt.Node.Content(input)
+				break
+			}
+		case "offset!":
+			expectedCaptureName := c.q.CaptureNameForID(steps[1].ValueID)
+
+			// FIXME: Handle errors!
+			startRowOffset, _ := strconv.Atoi(c.q.StringValueForID(steps[2].ValueID))
+			startColumnOffset, _ := strconv.Atoi(c.q.StringValueForID(steps[3].ValueID))
+			endRowOffset, _ := strconv.Atoi(c.q.StringValueForID(steps[4].ValueID))
+			endColumnOffset, _ := strconv.Atoi(c.q.StringValueForID(steps[5].ValueID))
+
+			for i, cpt := range qm.Captures {
+				captureName := c.q.CaptureNameForID(cpt.Index)
+				if expectedCaptureName != captureName {
+					continue
+				}
+
+				qm.Captures[i].startRowOffset = startRowOffset
+				qm.Captures[i].startColOffset = startColumnOffset
+				qm.Captures[i].endRowOffset = endRowOffset
+				qm.Captures[i].endColOffset = endColumnOffset
+			}
 		}
 
 		if !matchedAll {
+			qm.Captures = nil
 			break
 		}
-	}
-
-	if matchedAll {
-		qm.Captures = append(qm.Captures, m.Captures...)
 	}
 
 	return //nolint:nakedret // ok
@@ -636,7 +723,7 @@ func (steps QueryPredicateSteps) assertValid(valueFn func(uint32) string) (err e
 		return ErrPredicateWrongStart
 	}
 
-	var errx [3]error
+	var errx [6]error
 
 	//nolint:mnd // ok
 	switch op := valueFn(steps[0].ValueID); op {
@@ -647,10 +734,21 @@ func (steps QueryPredicateSteps) assertValid(valueFn func(uint32) string) (err e
 		errx[0] = steps.assertCount(op, 4)
 		errx[1] = steps.assertStepType(op, 1, QueryPredicateStepTypeCapture, valueFn)
 		errx[2] = steps.assertStepType(op, 2, QueryPredicateStepTypeString, valueFn)
-	case "set!", "is?", "is-not?":
-		errx[0] = steps.assertCount(op, 3, 4)
+	case "set!":
+		errx[0] = steps.assertCount(op, 3, 5)
 		errx[1] = steps.assertStepType(op, 1, QueryPredicateStepTypeString, valueFn)
 		errx[2] = steps.assertStepType(op, 2, QueryPredicateStepTypeString, valueFn)
+	case "is?", "is-not?":
+		errx[0] = steps.assertCount(op, 3)
+		errx[1] = steps.assertStepType(op, 1, QueryPredicateStepTypeString, valueFn)
+		errx[2] = steps.assertStepType(op, 2, QueryPredicateStepTypeString, valueFn)
+	case "offset!":
+		errx[0] = steps.assertCount(op, 7)
+		errx[1] = steps.assertStepType(op, 1, QueryPredicateStepTypeCapture, valueFn)
+		errx[2] = steps.assertStepType(op, 2, QueryPredicateStepTypeString, valueFn)
+		errx[3] = steps.assertStepType(op, 3, QueryPredicateStepTypeString, valueFn)
+		errx[4] = steps.assertStepType(op, 4, QueryPredicateStepTypeString, valueFn)
+		errx[5] = steps.assertStepType(op, 5, QueryPredicateStepTypeString, valueFn)
 	}
 
 	return cmp.Or(errx[:]...) //nolint:wrapcheck // ok, the actual errors are wrapped

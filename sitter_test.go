@@ -544,7 +544,7 @@ func TestQuery(t *testing.T) {
 	var matched int
 
 	for {
-		_, ok := qc.NextMatch()
+		_, ok := qc.NextMatch([]byte(js))
 		if !ok {
 			break
 		}
@@ -888,7 +888,7 @@ func TestCursorKeepsQuery(t *testing.T) {
 		qc.Exec(query, root)
 
 		for { // ensure qc.NextMatch() doesn't  cause a segfault
-			match, exists := qc.NextMatch()
+			match, exists := qc.NextMatch(source)
 			if !exists || match == nil {
 				break
 			}
@@ -994,7 +994,7 @@ func testCaptures(t *testing.T, body, sq string, exp []string) {
 	act := []string{}
 
 	for {
-		m, ok := qc.NextMatch()
+		m, ok := qc.NextMatch([]byte(body))
 		if !ok {
 			break
 		}
