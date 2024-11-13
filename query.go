@@ -421,7 +421,7 @@ func (c *QueryCursor) SetMatchLimit(limit uint32) {
 // If query execution takes longer than this, it will halt early, returning NULL.
 // See [`ts_query_cursor_next_match`] or [`ts_query_cursor_next_capture`] for more information.
 func (c *QueryCursor) SetTimeout(micros int) {
-	C.ts_query_cursor_set_timeout_micros(c.c, C.ulong(micros))
+	C.ts_query_cursor_set_timeout_micros(c.c, C.uint64_t(micros))
 }
 
 // Timeout returns the duration in microseconds that query execution is allowed to take.
