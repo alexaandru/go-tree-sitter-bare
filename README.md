@@ -66,7 +66,7 @@ import (
 )
 
 parser := sitter.NewParser()
-ok := parser.SetLanguage(javascript.GetLanguage())
+ok := parser.SetLanguage(sitter.NewLanguage(javascript.GetLanguage()))
 if !ok {
     panic("cannot set language")
 }
@@ -143,7 +143,7 @@ func main() {
 
 	// Parse source code
 	lang := javascript.GetLanguage()
-	n, _ := sitter.Parse(context.Background(), sourceCode, lang)
+	n, _ := sitter.Parse(context.Background(), sourceCode, sitter.NewLanguage(lang))
 	// Execute the query
 	q, _ := sitter.NewQuery([]byte(screamingSnakeCasePattern), lang)
 	qc := sitter.NewQueryCursor()
