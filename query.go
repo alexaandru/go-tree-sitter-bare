@@ -663,16 +663,24 @@ func (qm *QueryMatch) satisfies(c *QueryCursor, input []byte) (matchedAll bool) 
 				}
 
 				qm.Properties["injection.language"] = cpt.Node.Content(input)
+
 				break
 			}
 		case "offset!":
 			expectedCaptureName := c.q.CaptureNameForID(steps[1].ValueID)
 
-			// FIXME: Handle errors!
-			startRowOffset, _ := strconv.Atoi(c.q.StringValueForID(steps[2].ValueID))
-			startColumnOffset, _ := strconv.Atoi(c.q.StringValueForID(steps[3].ValueID))
-			endRowOffset, _ := strconv.Atoi(c.q.StringValueForID(steps[4].ValueID))
-			endColumnOffset, _ := strconv.Atoi(c.q.StringValueForID(steps[5].ValueID))
+			var (
+				errx                                                             [4]error
+				startRowOffset, startColumnOffset, endRowOffset, endColumnOffset int
+			)
+
+			startRowOffset, errx[0] = strconv.Atoi(c.q.StringValueForID(steps[2].ValueID))
+			startColumnOffset, errx[1] = strconv.Atoi(c.q.StringValueForID(steps[3].ValueID))
+			endRowOffset, errx[2] = strconv.Atoi(c.q.StringValueForID(steps[4].ValueID))
+			endColumnOffset, errx[3] = strconv.Atoi(c.q.StringValueForID(steps[5].ValueID))
+			if err := errors.Join(errx[:]...); err != nil {
+				panic(err)
+			}
 
 			for i, cpt := range qm.Captures {
 				captureName := c.q.CaptureNameForID(cpt.Index)
@@ -716,7 +724,7 @@ func (steps QueryPredicateSteps) split() (out []QueryPredicateSteps) {
 
 func (steps QueryPredicateSteps) assertValid(valueFn func(uint32) string) (err error) {
 	if len(steps) == 0 {
-		return
+		return //nolint:nakedret // ok
 	}
 
 	if steps[0].Type != QueryPredicateStepTypeString {

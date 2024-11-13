@@ -154,6 +154,7 @@ linters-settings:
       - q *Query
       - n *Node
       - m *QueryMatch
+      - c *QueryCursor
   wsl:
     severity: warning
     strict-append: true
