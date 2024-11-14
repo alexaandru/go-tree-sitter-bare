@@ -3,12 +3,16 @@ on:
   push:
     branches:
       - main
+      - dev
   pull_request:
     branches:
       - main
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     name: Test
     steps:
       - uses: actions/checkout@v4
@@ -17,7 +21,7 @@ jobs:
           go-version-file: go.mod
       - run: make test
         # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions
-      - run: echo "::notice title=Unit Test Coverage::$(go tool cover -func=unit.cov|tail -n1|tr -s "\t")"
+      - run: echo "::notice title=Unit Test Coverage [${{ matrix.os }}]::$(go tool cover -func=unit.cov|tail -n1|tr -s "\t")"
   lint:
     runs-on: ubuntu-latest
     name: Lint

@@ -1,4 +1,5 @@
 GOFLAGS ?= -tags=test
+SHELL = /bin/bash
 
 all: unimplemented todo fmt lint test
 
