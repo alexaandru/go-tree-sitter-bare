@@ -4,7 +4,7 @@ SHELL = /bin/bash
 all: unimplemented todo fmt lint test
 
 test:
-	@GOFLAGS="$(GOFLAGS)" go test -cover -coverprofile=unit.cov .
+	@GOEXPERIMENT=cgocheck2 GOFLAGS="$(GOFLAGS)" go test -race -cover -coverprofile=unit.cov .
 
 check_lint:
 	@golangci-lint version > /dev/null 2>&1 || \
