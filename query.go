@@ -268,6 +268,12 @@ func NewQuery(lang *Language, pattern []byte) (q *Query, err error) {
 
 //nolint:nakedret // ok
 func fromRawParts(q *Query, pattern []byte) (_ *Query, err error) { //nolint:funlen,gocognit,cyclop // ok
+	defer func() {
+		if err != nil {
+			q.close()
+		}
+	}()
+
 	// Build a vector of strings to store the capture names.
 	for i := range q.CaptureCount() {
 		q.captureNames = append(q.captureNames, q.CaptureNameForID(i))
@@ -316,7 +322,6 @@ func fromRawParts(q *Query, pattern []byte) (_ *Query, err error) { //nolint:fun
 			}
 
 			if steps[0].Type != QueryPredicateStepTypeString {
-				q.close()
 				return nil, pErr(ErrPredicateWrongStart, row, "got @"+q.captureNames[steps[0].ValueID])
 			}
 
@@ -1000,9 +1005,6 @@ func (steps QueryPredicateSteps) split() (out []QueryPredicateSteps) {
 	return
 }
 
-//nolint:godox // ok
-// TODO: Maybe we should move q.close() out of assert funcs?
-
 // Checks the step count against the given limits.
 //
 // If only ext is provided it checks for exact step count, f opts[0] is provided
@@ -1018,19 +1020,16 @@ func (q *Query) assertStepCount(op string, row uint, exp, act int, opts ...int) 
 	switch {
 	case exp2 != nil:
 		if act < exp || act > *exp2 {
-			q.close()
 			return pErr(ErrPredicateArgsWrongCount, row,
 				fmt.Sprintf("%s (expected [%d..%d], got %d)", op, exp, *exp2, act))
 		}
 	case exp < 0:
 		if exp = -exp; act < exp {
-			q.close()
 			return pErr(ErrPredicateArgsWrongCount, row,
 				fmt.Sprintf("%s (expected at least %d, got %d)", op, exp, act))
 		}
 	default:
 		if act != exp {
-			q.close()
 			return pErr(ErrPredicateArgsWrongCount, row,
 				fmt.Sprintf("%s (expected %d, got %d)", op, exp, act))
 		}
@@ -1055,7 +1054,6 @@ func (q *Query) assertStepType(op string, valFn func() string, argNo int, row ui
 	}
 
 	if failCond {
-		q.close()
 		return pErr(ErrPredicateWrongType, row,
 			fmt.Sprintf("%s (arg #%d must %s a %v, got %v %q)", op, argNo, be, b, a, valFn()))
 	}
@@ -1094,7 +1092,6 @@ func assertPredEq(q *Query, steps QueryPredicateSteps, op string, row uint, strV
 	}
 }
 
-//nolint:nakedret // ok
 func assertPredMatch(q *Query, steps QueryPredicateSteps, op string, row uint, strVal, cptVal func(int) func() string) (_ any, err error) { //nolint:lll // ok
 	if err = q.assertStepCount(op, row, 2, len(steps)-1); err != nil { //nolint:mnd // false positive
 		return
@@ -1115,7 +1112,6 @@ func assertPredMatch(q *Query, steps QueryPredicateSteps, op string, row uint, s
 
 	regex, err = regexp.Compile(strVal(2)()) //nolint:mnd // ok
 	if err != nil {
-		q.close()
 		return TextPredicateCapture{}, pErr(fmt.Errorf("%w: %w", ErrPredicateRegex, err), row, "")
 	}
 
@@ -1142,7 +1138,6 @@ func assertPredAny(q *Query, steps QueryPredicateSteps, op string, row uint, str
 
 	for i, arg := range steps[2:] {
 		if arg.Type == QueryPredicateStepTypeCapture {
-			q.close()
 			return TextPredicateCapture{}, pErr(ErrPredicateWrongType, row,
 				"#any-of? predicate must be literals, got capture @"+q.captureNames[arg.ValueID])
 		}
