@@ -197,6 +197,7 @@ func freeTSRangeArray(p *C.struct_TSRange, count C.uint) {
 
 	for ; count > 0; count-- {
 		C.free(pp)
+
 		pp = unsafe.Add(pp, C.sizeof_struct_TSRange)
 	}
 }

@@ -88,6 +88,7 @@ func (n Node) EndPoint() Point {
 // freeing it using `free`.
 func (n Node) String() string {
 	p := C.ts_node_string(n.c)
+
 	defer C.free(unsafe.Pointer(p))
 
 	return C.GoString(p)
@@ -219,6 +220,7 @@ func (n Node) NamedChildCount() uint32 {
 // ChildByFieldName returns the node's child with the given field name.
 func (n Node) ChildByFieldName(name string) Node {
 	str := C.CString(name)
+
 	defer C.free(unsafe.Pointer(str))
 
 	return newNode(C.ts_node_child_by_field_name(n.c, str, C.uint(len(name))))

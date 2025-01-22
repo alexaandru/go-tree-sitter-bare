@@ -625,6 +625,7 @@ func (q *Query) StringValueForID(id uint32) string {
 // is no way to undo this.
 func (q *Query) DisableCapture(name string) {
 	cName := C.CString(name)
+
 	C.ts_query_disable_capture(q.c, cName, C.uint(len(name)))
 	C.free(unsafe.Pointer(cName))
 }
@@ -773,6 +774,7 @@ func (c *QueryCursor) SetPointRange(start, end Point) {
 
 func (c *QueryCursor) NextMatch() (_ *QueryMatch) {
 	m := (*C.TSQueryMatch)(C.malloc(C.sizeof_TSQueryMatch))
+
 	defer C.free(unsafe.Pointer(m))
 
 	if C.ts_query_cursor_next_match(c.c, m) {
@@ -784,6 +786,7 @@ func (c *QueryCursor) NextMatch() (_ *QueryMatch) {
 
 func (c *QueryCursor) NextCapture() (_ *QueryMatch, i uint) {
 	m := (*C.TSQueryMatch)(C.malloc(C.sizeof_TSQueryMatch))
+
 	defer C.free(unsafe.Pointer(m))
 
 	var captureIndex C.uint32_t
@@ -805,6 +808,7 @@ func (qm *QueryMatch) Remove() {
 
 func (qm *QueryMatch) NodesForCaptureIndex(captureIndex uint) []Node {
 	nodes := []Node{}
+
 	for _, capture := range qm.Captures {
 		if uint(capture.Index) == captureIndex {
 			nodes = append(nodes, capture.Node)
@@ -1047,6 +1051,7 @@ func (q *Query) assertStepType(op string, valFn func() string, argNo int, row ui
 
 	failCond := actualType != acceptedType
 	be := "be"
+
 	if acceptedType < 0 {
 		failCond = actualType == -acceptedType
 		b = QueryPredicateStepType(-acceptedType)
@@ -1208,6 +1213,7 @@ func parseProperty(steps QueryPredicateSteps, row uint, functionName string, cap
 					fmt.Sprintf("%s (unexpected capture #2 name @%s)",
 						functionName, captureNames[step.ValueID]))
 			}
+
 			captureID = new(uint)
 			*captureID = uint(step.ValueID)
 		case key == nil:

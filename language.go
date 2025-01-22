@@ -35,6 +35,7 @@ func (l *Language) Copy() *Language {
 func (l *Language) Delete() {
 	l.once.Do(func() {
 		C.ts_language_delete(l.c())
+
 		l.ptr = nil
 		l = nil
 	})
@@ -58,6 +59,7 @@ func (l *Language) SymbolName(s Symbol) string {
 // SymbolID returns the numerical id for the given node type string.
 func (l *Language) SymbolID(name string, isNamed bool) Symbol {
 	cName := C.CString(name)
+
 	defer C.free(unsafe.Pointer(cName))
 
 	return C.ts_language_symbol_for_name(l.c(), cName, C.uint(len(name)), C._Bool(isNamed))
@@ -76,6 +78,7 @@ func (l *Language) FieldName(idx int) string {
 // FieldID returns the numerical id for the given field name string.
 func (l *Language) FieldID(name string) FieldID {
 	cName := C.CString(name)
+
 	defer C.free(unsafe.Pointer(cName))
 
 	return C.ts_language_field_id_for_name(l.c(), cName, C.uint(len(name)))

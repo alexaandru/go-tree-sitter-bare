@@ -262,6 +262,7 @@ func (p *Parser) TimeoutMicros() int {
 // halt early, returning NULL. See [`ts_parser_parse`] for more information.
 func (p *Parser) SetCancellationFlag(flag *uint64) {
 	p.cancel = flag
+
 	C.ts_parser_set_cancellation_flag(p.c, (*C.size_t)(unsafe.Pointer(p.cancel)))
 }
 

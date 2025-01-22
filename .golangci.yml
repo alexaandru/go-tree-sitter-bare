@@ -133,9 +133,6 @@ linters-settings:
   unused:
     field-writes-are-uses: true
     post-statements-are-reads: false
-    # FIXME: setting the below to false crashes.
-    # We need this check in order to get rid of `deadcode` linter.
-    exported-is-used: true
     exported-fields-are-used: false
     parameters-are-used: true
     local-variables-are-used: false
@@ -212,7 +209,7 @@ linters:
     - goconst
     - gocritic
     - gocyclo
-    - godot
+    #- godot # TODO: currently crashes
     - godox
     - gofmt
     - gofumpt
