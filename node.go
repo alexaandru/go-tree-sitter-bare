@@ -16,7 +16,7 @@ type Node struct {
 type Symbol = C.TSSymbol
 
 // SymbolType indicates the type of symbol.
-type SymbolType = C.TSSymbolType
+type SymbolType uint32
 
 // Possible symbol types.
 const (

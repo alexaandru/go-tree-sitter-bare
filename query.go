@@ -108,7 +108,7 @@ type QueryPredicateStep struct {
 }
 
 // QueryPredicateStepType represents type of step in a predicate.
-type QueryPredicateStepType = C.TSQueryPredicateStepType
+type QueryPredicateStepType uint32
 
 // QueryPredicateSteps holds all the steps for a predicate.
 type QueryPredicateSteps []QueryPredicateStep
@@ -129,7 +129,7 @@ type QueryError struct {
 }
 
 // QueryErrorKind indicates the type of QueryErrorKind.
-type QueryErrorKind = C.TSQueryError
+type QueryErrorKind uint32
 
 // Possible query predicate steps.
 const (
@@ -233,7 +233,7 @@ var voidPoint = Point{Row: uint(maxUint32), Column: uint(maxUint32)} //nolint:go
 func NewQuery(lang *Language, pattern []byte) (q *Query, err error) {
 	var (
 		errOfs   C.uint32_t
-		errType  QueryErrorKind
+		errType  C.TSQueryError
 		bytesPtr *C.char
 	)
 
@@ -389,8 +389,8 @@ func (e QueryError) Unwrap() error {
 	return e.inner
 }
 
-func newQueryError(lang *Language, pattern []byte, kind QueryErrorKind, errOfs C.uint) error {
-	if kind == QueryErrorLanguage {
+func newQueryError(lang *Language, pattern []byte, kind C.TSQueryError, errOfs C.uint) error {
+	if QueryErrorKind(kind) == QueryErrorLanguage {
 		lErr := LanguageError(lang.Version())
 		return &QueryError{Kind: QueryErrorLanguage, inner: error(lErr), Point: voidPoint}
 	}
@@ -418,7 +418,9 @@ func newQueryError(lang *Language, pattern []byte, kind QueryErrorKind, errOfs C
 
 	var message string
 
-	switch kind {
+	kkind := QueryErrorKind(kind)
+
+	switch kkind {
 	// Error types that report names
 	case QueryErrorNodeType, QueryErrorField, QueryErrorCapture:
 		suffix := string(pattern[offset:])
@@ -438,14 +440,14 @@ func newQueryError(lang *Language, pattern []byte, kind QueryErrorKind, errOfs C
 			message = lineContainingError + "\n" + strings.Repeat(" ", int(offset-lineStart)) + "^"
 		}
 
-		kind = QueryErrorSyntax
-		if kind == QueryErrorStructure {
-			kind = QueryErrorStructure
+		kkind = QueryErrorSyntax
+		if kkind == QueryErrorStructure {
+			kkind = QueryErrorStructure
 		}
 	}
 
 	return &QueryError{
-		Kind:    kind,
+		Kind:    kkind,
 		Point:   Point{Row: row, Column: column},
 		Offset:  offset,
 		Message: message,
@@ -565,7 +567,7 @@ func (q *Query) PredicatesForPattern(patternIndex uint32) []QueryPredicateSteps 
 	for _, s := range cPredicateSteps {
 		stepType := s._type
 		valueID := uint32(s.value_id)
-		predicateSteps = append(predicateSteps, QueryPredicateStep{stepType, valueID})
+		predicateSteps = append(predicateSteps, QueryPredicateStep{QueryPredicateStepType(stepType), valueID})
 	}
 
 	return predicateSteps.split()
