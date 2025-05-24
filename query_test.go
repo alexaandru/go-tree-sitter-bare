@@ -1,7 +1,6 @@
 package sitter
 
 import (
-	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -364,10 +363,11 @@ func TestQueryCursorFilterPredicates(t *testing.T) {
 
 			in := []byte(tc.input)
 
-			tree, err := p.ParseString(context.TODO(), nil, in)
+			tree, err := p.ParseString(t.Context(), nil, in)
 			if err != nil {
 				t.Fatal("Expected no error, got", err)
 			}
+			defer tree.Close()
 
 			root := tree.RootNode()
 

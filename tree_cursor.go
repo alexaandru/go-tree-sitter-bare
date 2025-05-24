@@ -3,17 +3,13 @@ package sitter
 // #include "sitter.h"
 import "C"
 
-import (
-	"runtime"
-	"sync"
-)
+import "runtime"
 
 // TreeCursor allows you to walk a syntax tree more efficiently than is
 // possible using the `Node` functions. It is a mutable object that is always
 // on a certain syntax node, and can be moved imperatively to different nodes.
 type TreeCursor struct {
-	c    *C.TSTreeCursor
-	once sync.Once
+	c *C.TSTreeCursor
 }
 
 // NewTreeCursor creates a new tree cursor starting from the given node.
@@ -28,18 +24,9 @@ func NewTreeCursor(n Node) (c *TreeCursor) {
 func newTreeCursor(cc C.struct_TSTreeCursor) (c *TreeCursor) {
 	c = &TreeCursor{c: &cc}
 
-	runtime.SetFinalizer(c, (*TreeCursor).close)
+	runtime.AddCleanup(c, func(cPtr *C.TSTreeCursor) { C.ts_tree_cursor_delete(cPtr) }, c.c)
 
 	return
-}
-
-// close should be called to ensure that all the memory used by the tree cursor
-// is freed.
-//
-// As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
-// parser.close() will be called by Go's garbage collector and users need not call this manually.
-func (c *TreeCursor) close() {
-	c.once.Do(func() { C.ts_tree_cursor_delete(c.c) })
 }
 
 // Reset re-initializes a tree cursor to start at the original node that the cursor was

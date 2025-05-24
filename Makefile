@@ -1,20 +1,24 @@
 GOFLAGS ?= -tags=test
 SHELL = /bin/bash
 
-all: unimplemented todo fmt lint test
+all: unimplemented todo fmt lint deadcode vulncheck test
 
 test:
-	@GOEXPERIMENT=cgocheck2 GOFLAGS="$(GOFLAGS)" go test -race -cover -coverprofile=unit.cov .
+	@GOEXPERIMENT=cgocheck2 GOFLAGS="$(GOFLAGS)" go test -vet=all -race -cover -coverprofile=unit.cov .
 
-check_lint:
-	@golangci-lint version > /dev/null 2>&1 || \
-		go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+lint:
+	@GOFLAGS="$(GOFLAGS)" go tool -modfile=tools/go.mod golangci-lint config verify
+	@GOFLAGS="$(GOFLAGS)" go tool -modfile=tools/go.mod golangci-lint run
 
-lint: check_lint
-	@GOFLAGS="$(GOFLAGS)" golangci-lint run . && echo -e "ok\tno linter warnings"
+deadcode:
+	@go tool -modfile=tools/go.mod deadcode -tags=test -test ./...
+
+vulncheck:
+	@go tool -modfile=tools/go.mod govulncheck ./...
 
 fmt:
-	@ls -1 *.go|while read x; do gofumpt -w -extra $$x; done
+	@find -name "*.go"|xargs go tool -modfile=tools/go.mod gofumpt -extra -w
+	@find -name "*.go"|xargs go tool -modfile=tools/go.mod goimports -w
 
 todo:
 	@grep -E '(FIXME|TODO)(\s|:|"|$$)' *.go || true

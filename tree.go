@@ -15,7 +15,7 @@ import (
 // you must copy a tree if you want to use it on multiple threads simultaneously.
 type Tree struct {
 	c    *C.TSTree
-	once sync.Once
+	once sync.Once // ensures Close is only called once
 }
 
 // Point represents one location in the input.
@@ -90,16 +90,9 @@ func mkRanges(p *C.TSRange, count C.uint32_t) (out []Range) {
 }
 
 // newTree creates a new tree object from a C pointer.
-// The function will set a finalizer for the object,
-// thus no free is needed for it.
+// The caller is responsible for calling Close() when done with the tree.
 func newTree(c *C.TSTree) (t *Tree) {
-	t = &Tree{c: c}
-
-	//nolint:godox // ok
-	// FIXME: What prevents us from using this?
-	// runtime.SetFinalizer(t, (*Tree).close)
-
-	return
+	return &Tree{c: c}
 }
 
 // Copy creates a shallow copy of the syntax tree. This is very fast.
@@ -108,14 +101,6 @@ func newTree(c *C.TSTree) (t *Tree) {
 // a time, as syntax trees are not thread safe.
 func (t *Tree) Copy() *Tree {
 	return newTree(C.ts_tree_copy(t.c))
-}
-
-// close should be called to ensure that all the memory used by the tree is freed.
-//
-// As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
-// parser.close() will be called by Go's garbage collector and users need not call this manually.
-func (t *Tree) close() {
-	t.once.Do(func() { C.ts_tree_delete(t.c) })
 }
 
 // RootNode returns root node of the syntax tree.
@@ -190,6 +175,19 @@ func (t *Tree) PrintDotGraph(name string) (err error) {
 	}
 
 	return
+}
+
+// Close releases the resources associated with the tree.
+// After calling Close, the Tree must not be used again.
+func (t *Tree) Close() {
+	if t == nil {
+		return
+	}
+
+	t.once.Do(func() {
+		C.ts_tree_delete(t.c)
+		t.c = nil
+	})
 }
 
 func freeTSRangeArray(p *C.struct_TSRange, count C.uint) {

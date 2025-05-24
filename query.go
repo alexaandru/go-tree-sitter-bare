@@ -10,7 +10,6 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
-	"sync"
 	"unsafe"
 )
 
@@ -26,8 +25,6 @@ type Query struct {
 	propertySettings   [][]QueryProperty
 	propertyPredicates [][]PropertyPredicate
 	generalPredicates  [][]QueryPredicate
-
-	once sync.Once
 }
 
 type Predicator func(_ *Query, _ QueryPredicateSteps, op string, row uint,
@@ -69,8 +66,7 @@ type PropertyPredicate struct {
 
 // QueryCursor is a stateful struct used to execute a query on a tree.
 type QueryCursor struct {
-	c    *C.TSQueryCursor
-	once sync.Once
+	c *C.TSQueryCursor
 }
 
 // QueryCapture is a captured node by a query with an index.
@@ -261,19 +257,13 @@ func NewQuery(lang *Language, pattern []byte) (q *Query, err error) {
 		return
 	}
 
-	runtime.SetFinalizer(q, (*Query).close)
+	runtime.AddCleanup(q, func(c *C.TSQuery) { C.ts_query_delete(c) }, q.c)
 
 	return
 }
 
 //nolint:nakedret // ok
 func fromRawParts(q *Query, pattern []byte) (_ *Query, err error) { //nolint:funlen,gocognit,cyclop // ok
-	defer func() {
-		if err != nil {
-			q.close()
-		}
-	}()
-
 	// Build a vector of strings to store the capture names.
 	for i := range q.CaptureCount() {
 		q.captureNames = append(q.captureNames, q.CaptureNameForID(i))
@@ -452,14 +442,6 @@ func newQueryError(lang *Language, pattern []byte, kind C.TSQueryError, errOfs C
 		Offset:  offset,
 		Message: message,
 	}
-}
-
-// close should be called to ensure that all the memory used by the query is freed.
-//
-// As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
-// parser.close() will be called by Go's garbage collector and users need not call this manually.
-func (q *Query) close() {
-	q.once.Do(func() { C.ts_query_delete(q.c) })
 }
 
 // PatternCount returns the number of patterns in the query.
@@ -664,7 +646,7 @@ func (q *Query) DisablePattern(patIdx uint32) {
 func NewQueryCursor() (qc *QueryCursor) {
 	qc = &QueryCursor{c: C.ts_query_cursor_new()}
 
-	runtime.SetFinalizer(qc, (*QueryCursor).close)
+	runtime.AddCleanup(qc, func(c *C.TSQueryCursor) { C.ts_query_cursor_delete(c) }, qc.c)
 
 	return
 }
@@ -683,14 +665,6 @@ func newQueryMatch(m *C.TSQueryMatch, cursor *QueryCursor) *QueryMatch {
 		PatternIndex: uint(m.pattern_index),
 		ID:           uint(m.id),
 	}
-}
-
-// close should be called to ensure that all the memory used by the query cursor is freed.
-//
-// As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
-// parser.close() will be called by Go's garbage collector and users need not call this manually.
-func (c *QueryCursor) close() {
-	c.once.Do(func() { C.ts_query_cursor_delete(c.c) })
 }
 
 // Matches iterates over all of the matches in the order that they were found.
@@ -712,15 +686,6 @@ func (qc *QueryCursor) Matches(q *Query, n Node, text []byte) (qm QueryMatches) 
 func (qc *QueryCursor) Captures(q *Query, n Node, text []byte) QueryCaptures {
 	qc.exec(q, n)
 	return QueryCaptures{cursor: qc, query: q, text: text}
-}
-
-// exec executes the query on a given syntax node.
-func (c *QueryCursor) exec(q *Query, n Node) {
-	x := c.c
-	y := q.c
-	z := n.c
-	// C.ts_query_cursor_exec(c.c, q.c, n.c)
-	C.ts_query_cursor_exec(x, y, z)
 }
 
 // Manage the maximum number of in-progress matches allowed by this query
@@ -988,6 +953,15 @@ func (qc *QueryCaptures) Next() (m *QueryMatch, index uint) {
 // Set to UnlimitedMaxDepth to remove the maximum start depth.
 func (c *QueryCursor) SetMaxStartDepth(maxStartDepth uint32) {
 	C.ts_query_cursor_set_max_start_depth(c.c, C.uint(maxStartDepth))
+}
+
+// exec executes the query on a given syntax node.
+func (c *QueryCursor) exec(q *Query, n Node) {
+	x := c.c
+	y := q.c
+	z := n.c
+	// C.ts_query_cursor_exec(c.c, q.c, n.c)
+	C.ts_query_cursor_exec(x, y, z)
 }
 
 // Non API.

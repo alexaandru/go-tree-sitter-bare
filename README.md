@@ -87,8 +87,11 @@ Parse some code:
 
 ```go
 sourceCode := []byte("let a = 1")
-tree, _ := parser.ParseString(context.Background(), nil, sourceCode)
-```
+tree, err := parser.ParseString(context.Background(), nil, sourceCode)
+if err != nil {
+	panic(err)
+}
+defer tree.Close()
 
 Inspect the syntax tree:
 
@@ -125,7 +128,11 @@ assert.False(n.Child(0).Child(0).HasChanges()) // left side of the tree didn't c
 assert.True(n.Child(0).Child(1).HasChanges())
 
 // generate new tree
-newTree, _ := parser.ParseString(context.TODO(), tree, newText)
+newTree, err := parser.ParseString(context.TODO(), tree, newText)
+if err != nil {
+	panic(err)
+}
+defer newTree.Close()
 ```
 
 ### Predicates
@@ -171,7 +178,13 @@ func main() {
 	lang := sitter.NewLanguage(langPtr)
 
 	// Parse source code.
-	n, _ := sitter.Parse(context.Background(), sourceCode, lang)
+	tree, err := parser.ParseString(context.Background(), nil, sourceCode)
+	if err != nil {
+		panic(err)
+	}
+	defer tree.Close()
+
+	n := tree.RootNode()
 
 	// Execute the query.
 	q, _ := sitter.NewQuery(lang, query)
@@ -192,3 +205,33 @@ func main() {
 	}
 }
 ```
+
+## Resource Management and Tree Ownership
+
+### Explicit Cleanup Required for Trees
+
+As of Go 1.24+, resource management for Tree-sitter bindings is modernized. Most objects (Parser, Query, QueryCursor, TreeCursor) are cleaned up automatically using Go's `runtime.AddCleanup`. **However, Tree objects require explicit cleanup.**
+
+- **You must call `tree.Close()` when you are done with a Tree.**
+- Failing to call `Close()` will result in memory leaks.
+- Using a Tree after calling `Close()` will panic or cause undefined behavior.
+- This is necessary because Tree ownership is ambiguous and automatic cleanup could cause double-free or use-after-free bugs.
+
+#### Example
+
+```go
+sourceCode := []byte("let a = 1")
+tree, err := parser.ParseString(context.Background(), nil, sourceCode)
+if err != nil {
+	panic(err)
+}
+defer tree.Close() // Always close your trees!
+```
+
+#### Why not automatic cleanup for Tree?
+
+Unlike other objects, Trees can be copied, edited, and passed around, making it impossible to safely determine ownership for automatic cleanup. Explicit `Close()` is the only safe approach.
+
+#### Convenience Wrappers
+
+If you want automatic cleanup, you can wrap Tree in your own type and use Go's `runtime.SetFinalizer` or similar, but this is not provided by default to avoid unsafe behavior.

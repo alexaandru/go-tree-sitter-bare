@@ -1,9 +1,6 @@
 package sitter
 
-import (
-	"context"
-	"testing"
-)
+import "testing"
 
 func TestNewLookaheadIterator(t *testing.T) {
 	t.Parallel()
@@ -37,7 +34,7 @@ func TestLookaheadIteratorNext(t *testing.T) {
 
 	input := []byte(source)
 
-	root, err := Parse(context.Background(), input, gr)
+	root, err := Parse(t.Context(), input, gr)
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}

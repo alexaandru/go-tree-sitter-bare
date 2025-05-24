@@ -18,7 +18,6 @@ import (
 type Parser struct {
 	c      *C.TSParser
 	cancel *uint64
-	once   sync.Once
 }
 
 // Input type lets you specify how to read the text.
@@ -75,17 +74,9 @@ func NewParser() (p *Parser) {
 
 	p.SetCancellationFlag(&cancel)
 
-	runtime.SetFinalizer(p, (*Parser).close)
+	runtime.AddCleanup(p, func(c *C.TSParser) { C.ts_parser_delete(c) }, p.c)
 
-	return
-}
-
-// close should be called to ensure that all the memory used by the parse is freed.
-//
-// As the constructor in go-tree-sitter would set this func call through runtime.SetFinalizer,
-// parser.close() will be called by Go's garbage collector and users need not call this manually.
-func (p *Parser) close() {
-	p.once.Do(func() { C.ts_parser_delete(p.c) })
+	return p
 }
 
 // Language returns the parser's current language, if set.

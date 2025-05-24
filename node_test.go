@@ -1,7 +1,6 @@
 package sitter
 
 import (
-	"context"
 	"reflect"
 	"testing"
 )
@@ -38,7 +37,7 @@ func TestNodeLanguage(t *testing.T) {
 
 	input := []byte(`1 + 2`)
 
-	root, err := Parse(context.Background(), input, gr)
+	root, err := Parse(t.Context(), input, gr)
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}
@@ -178,7 +177,7 @@ func TestNodeChildContainingDescendant(t *testing.T) { //nolint:dupl // OK
 
 	input := []byte(`1 + 2`)
 
-	root, err := Parse(context.Background(), input, gr)
+	root, err := Parse(t.Context(), input, gr)
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}
@@ -228,7 +227,7 @@ func TestNodeChildWithDescendant(t *testing.T) { //nolint:dupl // OK
 
 	input := []byte(`1 + 2`)
 
-	root, err := Parse(context.Background(), input, gr)
+	root, err := Parse(t.Context(), input, gr)
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}
@@ -409,12 +408,12 @@ func TestNodeContent(t *testing.T) {
 	})
 }
 
-func testParserSequence[T any](t *testing.T, source string, testCases seqTestCases[T]) { //nolint:cyclop // ok
+func testParserSequence[T any](t *testing.T, source string, testCases seqTestCases[T]) {
 	t.Helper()
 
 	input := []byte(source)
 
-	root, err := Parse(context.Background(), input, gr)
+	root, err := Parse(t.Context(), input, gr)
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}

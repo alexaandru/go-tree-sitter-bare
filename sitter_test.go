@@ -34,7 +34,7 @@ var (
 func TestRootNode(t *testing.T) {
 	t.Parallel()
 
-	n, err := Parse(context.Background(), []byte("1 + 2"), gr)
+	n, err := Parse(t.Context(), []byte("1 + 2"), gr)
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}
@@ -112,10 +112,11 @@ func TestTree(t *testing.T) {
 	parser.Debug()
 	parser.SetLanguage(gr)
 
-	tree, err := parser.ParseString(context.Background(), nil, []byte("1 + 2"))
+	tree, err := parser.ParseString(t.Context(), nil, []byte("1 + 2"))
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}
+	defer tree.Close()
 
 	n := tree.RootNode()
 	sum := n.Child(0)
@@ -201,10 +202,11 @@ func TestTree(t *testing.T) {
 		t.Fatal("Expected changes for 3st grandchild")
 	}
 
-	tree2, err := parser.ParseString(context.Background(), tree, newText)
+	tree2, err := parser.ParseString(t.Context(), tree, newText)
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}
+	defer tree2.Close()
 
 	n = tree2.RootNode()
 
@@ -232,10 +234,11 @@ func TestErrorNodes(t *testing.T) {
 	parser.Debug()
 	parser.SetLanguage(gr)
 
-	tree, err := parser.ParseString(context.Background(), nil, []byte("1 + a"))
+	tree, err := parser.ParseString(t.Context(), nil, []byte("1 + a"))
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}
+	defer tree.Close()
 
 	n := tree.RootNode()
 
@@ -264,10 +267,11 @@ func TestErrorNodes(t *testing.T) {
 		t.Fatal("Expected error")
 	}
 
-	tree, err = parser.ParseString(context.Background(), nil, []byte("1 +"))
+	tree, err = parser.ParseString(t.Context(), nil, []byte("1 +"))
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}
+	defer tree.Close()
 
 	n = tree.RootNode()
 
@@ -323,7 +327,7 @@ func TestGC(t *testing.T) {
 	parser := NewParser()
 	parser.SetLanguage(gr)
 
-	tree, err := parser.ParseString(context.Background(), nil, []byte("1 + 2"))
+	tree, err := parser.ParseString(t.Context(), nil, []byte("1 + 2"))
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}
@@ -364,7 +368,7 @@ func TestOperationLimitParsing(t *testing.T) {
 
 	code := strings.Join(items, " + ")
 
-	tree, err := parser.ParseString(context.Background(), nil, []byte(code))
+	tree, err := parser.ParseString(t.Context(), nil, []byte(code))
 	if !errors.Is(err, ErrOperationLimit) {
 		t.Fatalf("Expected error to be %v, got %v", ErrOperationLimit, err)
 	}
@@ -395,7 +399,7 @@ func TestContextCancellationParsing(t *testing.T) {
 		err  error
 	)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	go func() {
@@ -425,7 +429,7 @@ func TestContextCancellationParsing(t *testing.T) {
 	}
 
 	// make sure we can re-use parse after cancellation
-	ctx = context.Background()
+	ctx = t.Context()
 	tree, err = parser.ParseString(ctx, nil, []byte("1 + 1"))
 
 	if tree == nil {
@@ -446,10 +450,11 @@ func TestIncludedRanges(t *testing.T) {
 	parser := NewParser()
 	parser.SetLanguage(gr)
 
-	mainTree, err := parser.ParseString(context.Background(), nil, []byte(code))
+	mainTree, err := parser.ParseString(t.Context(), nil, []byte(code))
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}
+	defer mainTree.Close()
 
 	expString := "(expression (sum left: (expression (number)) right: (expression (number))) (comment))"
 	if x := mainTree.RootNode().String(); x != expString {
@@ -475,10 +480,11 @@ func TestIncludedRanges(t *testing.T) {
 
 	parser.SetIncludedRanges([]Range{commentRange})
 
-	commentTree, err := parser.ParseString(context.Background(), nil, []byte(code))
+	commentTree, err := parser.ParseString(t.Context(), nil, []byte(code))
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}
+	defer commentTree.Close()
 
 	if x := commentTree.RootNode().String(); x != exprSumLR {
 		t.Fatalf("Expected root node to be %q, got %q", exprSumLR, x)
@@ -491,7 +497,7 @@ func TestSameNode(t *testing.T) {
 	parser := NewParser()
 	parser.SetLanguage(gr)
 
-	tree, err := parser.ParseString(context.Background(), nil, []byte("1 + 2"))
+	tree, err := parser.ParseString(t.Context(), nil, []byte("1 + 2"))
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}
@@ -529,10 +535,11 @@ func TestQuery(t *testing.T) {
 	parser := NewParser()
 	parser.SetLanguage(gr)
 
-	tree, err := parser.ParseString(context.Background(), nil, []byte(js))
+	tree, err := parser.ParseString(t.Context(), nil, []byte(js))
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}
+	defer tree.Close()
 
 	root := tree.RootNode()
 
@@ -604,7 +611,7 @@ func TestParserLifetime(t *testing.T) {
 				// create some memory/CPU pressure
 				data = append(data, bytes.Repeat([]byte(" "), 1024*1024)...)
 
-				tree, err := p.ParseString(context.Background(), nil, data)
+				tree, err := p.ParseString(t.Context(), nil, data)
 				if err != nil {
 					errs[i*n+j] = err
 					return
@@ -630,7 +637,7 @@ func TestTreeCursor(t *testing.T) { //nolint:tparallel // we test a specific nav
 
 	input := []byte(`1 + 2`)
 
-	root, err := Parse(context.Background(), input, gr)
+	root, err := Parse(t.Context(), input, gr)
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}
@@ -700,7 +707,7 @@ func TestLeakParse(t *testing.T) {
 	parser.SetLanguage(gr)
 
 	for range 100_000 {
-		parser.ParseString(context.Background(), nil, []byte("1 + 2")) //nolint:errcheck // ok
+		parser.ParseString(t.Context(), nil, []byte("1 + 2")) //nolint:errcheck // ok
 	}
 
 	runtime.GC()
@@ -723,7 +730,7 @@ func TestLeakRootNode(t *testing.T) {
 	parser.SetLanguage(gr)
 
 	for range 100_000 {
-		tree, err := parser.ParseString(context.Background(), nil, []byte("1 + 2"))
+		tree, err := parser.ParseString(t.Context(), nil, []byte("1 + 2"))
 		if err != nil {
 			t.Fatal("Expected no error, got", err)
 		}
@@ -756,7 +763,7 @@ func TestParseInput(t *testing.T) {
 		Read:     func(_ uint32, _ Point) []byte { return nil },
 	}
 
-	tree, err := parser.Parse(context.Background(), nil, input)
+	tree, err := parser.Parse(t.Context(), nil, input)
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}
@@ -781,7 +788,7 @@ func TestParseInput(t *testing.T) {
 		return inputData
 	}
 
-	tree, err = parser.Parse(context.Background(), nil, input)
+	tree, err = parser.Parse(t.Context(), nil, input)
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}
@@ -804,15 +811,12 @@ func TestParseInput(t *testing.T) {
 
 		readTimes++
 
-		end := int(offset + 5)
-		if len(inputData) < end {
-			end = len(inputData)
-		}
+		end := min(len(inputData), int(offset+5))
 
 		return inputData[offset:end]
 	}
 
-	tree, err = parser.Parse(context.Background(), nil, input)
+	tree, err = parser.Parse(t.Context(), nil, input)
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}
@@ -831,7 +835,7 @@ func TestParseInput(t *testing.T) {
 func TestLeakParseInput(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	parser := NewParser()
 	parser.SetLanguage(gr)
@@ -871,10 +875,8 @@ func BenchmarkParse(b *testing.B) {
 
 	inputData := []byte("1 + 2")
 
-	b.ResetTimer()
-
-	for range b.N {
-		parser.ParseString(context.Background(), nil, inputData) //nolint:errcheck // ok
+	for b.Loop() {
+		parser.ParseString(b.Context(), nil, inputData) //nolint:errcheck // ok
 	}
 }
 
@@ -884,12 +886,9 @@ func BenchmarkParseCancellable(b *testing.B) {
 
 	inputData := []byte("1 + 2")
 
-	b.ResetTimer()
+	ctx := b.Context()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	for range b.N {
+	for b.Loop() {
 		parser.ParseString(ctx, nil, inputData) //nolint:errcheck // ok
 	}
 }
@@ -910,10 +909,8 @@ func BenchmarkParseInput(b *testing.B) {
 		},
 	}
 
-	b.ResetTimer()
-
-	for range b.N {
-		parser.Parse(context.Background(), nil, input) //nolint:errcheck // ok
+	for b.Loop() {
+		parser.Parse(b.Context(), nil, input) //nolint:errcheck // ok
 	}
 }
 
@@ -945,10 +942,11 @@ func testCaptures(t *testing.T, body, sq string, exp []string) {
 	parser := NewParser()
 	parser.SetLanguage(gr)
 
-	tree, err := parser.ParseString(context.Background(), nil, []byte(body))
+	tree, err := parser.ParseString(t.Context(), nil, []byte(body))
 	if err != nil {
 		t.Fatal("Expected no error, got", err)
 	}
+	defer tree.Close()
 
 	root := tree.RootNode()
 

@@ -1,7 +1,6 @@
 package sitter
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -43,7 +42,7 @@ func TestIteratorNext(t *testing.T) {
 
 			input := []byte(tc.source)
 
-			root, err := Parse(context.Background(), input, gr)
+			root, err := Parse(t.Context(), input, gr)
 			if err != nil {
 				t.Fatal("Expected no error, got", err)
 			}
@@ -82,7 +81,7 @@ func TestIteratorForEach(t *testing.T) {
 
 			input := []byte(tc.source)
 
-			root, err := Parse(context.Background(), input, gr)
+			root, err := Parse(t.Context(), input, gr)
 			if err != nil {
 				t.Fatal("Expected no error, got", err)
 			}
