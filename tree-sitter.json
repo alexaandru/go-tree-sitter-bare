@@ -1,0 +1,156 @@
+{
+  "name": "test_grammar",
+  "version": 15,
+  "rules": {
+    "expression": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "sum"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "number"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "variable"
+        },
+        {
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "STRING",
+              "value": "("
+            },
+            {
+              "type": "SYMBOL",
+              "name": "expression"
+            },
+            {
+              "type": "STRING",
+              "value": ")"
+            }
+          ]
+        }
+      ]
+    },
+    "sum": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "FIELD",
+          "name": "left",
+          "content": {
+            "type": "SYMBOL",
+            "name": "expression"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "+"
+        },
+        {
+          "type": "FIELD",
+          "name": "right",
+          "content": {
+            "type": "SYMBOL",
+            "name": "expression"
+          }
+        }
+      ]
+    },
+    "number": {
+      "type": "PATTERN",
+      "value": "\\d+"
+    },
+    "comment": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "//"
+        },
+        {
+          "type": "PATTERN",
+          "value": ".*"
+        }
+      ]
+    },
+    "variable": {
+      "type": "PATTERN",
+      "value": "[a-zA-Z]\\w*"
+    }
+  },
+  "extras": [
+    {
+      "type": "PATTERN",
+      "value": "\\s"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "comment"
+    }
+  ],
+  "conflicts": [],
+  "externals": [],
+  "inline": [],
+  "word": "variable",
+  "supertypes": [],
+  "precedences": [
+    [
+      "sum",
+      "expression"
+    ]
+  ],
+  "symbols": [
+    "expression",
+    "sum",
+    "number",
+    "comment",
+    "variable"
+  ],
+  "tokens": [
+    {
+      "name": "number",
+      "pattern": "\\d+"
+    },
+    {
+      "name": "variable",
+      "pattern": "[a-zA-Z]\\w*"
+    },
+    {
+      "name": "+",
+      "pattern": "\\+"
+    },
+    {
+      "name": "(",
+      "pattern": "\\("
+    },
+    {
+      "name": ")",
+      "pattern": "\\)"
+    },
+    {
+      "name": "//",
+      "pattern": "//"
+    },
+    {
+      "name": "comment",
+      "pattern": "//.*"
+    }
+  ],
+  "metadata": {
+    "version": "15.1.2",
+    "fields": {},
+    "symbols": {},
+    "tokenTypes": {},
+    "conflicts": [],
+    "precedences": [],
+    "inline": [],
+    "supertypes": [],
+    "externals": [],
+    "word": null
+  }
+}

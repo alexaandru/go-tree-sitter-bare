@@ -54,8 +54,10 @@ type readFuncsMap struct {
 
 // Input encoding types.
 const (
-	InputEncodingUTF8  = C.TSInputEncodingUTF8
-	InputEncodingUTF16 = C.TSInputEncodingUTF16
+	InputEncodingUTF8    = C.TSInputEncodingUTF8
+	InputEncodingUTF16LE = C.TSInputEncodingUTF16LE
+	InputEncodingUTF16BE = C.TSInputEncodingUTF16BE
+	InputEncodingCustom  = C.TSInputEncodingCustom
 )
 
 // Maintain a map of read functions that can be called from C.
@@ -89,7 +91,7 @@ func (p *Parser) Language() (_ *Language) {
 // Returns a boolean indicating whether or not the language was successfully
 // assigned. True means assignment succeeded. False means there was a version
 // mismatch: the language was generated with an incompatible version of the
-// Tree-sitter CLI. Check the language's version using `ts_language_version`
+// Tree-sitter CLI. Check the language's ABI version using `ts_language_abi_version`
 // and compare it to this library's `TREE_SITTER_LANGUAGE_VERSION` and
 // `TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION` constants.
 func (p *Parser) SetLanguage(lang *Language) bool {
@@ -153,7 +155,7 @@ func (p *Parser) IncludedRanges() (out []Range) {
 // See Input for details about it.
 //
 // This function returns a syntax tree on success, and `NULL` on failure. There
-// are three possible reasons for failure:
+// are four possible reasons for failure:
 //  1. The parser does not have a language assigned. Check for this using the
 //     [`ts_parser_language`] function.
 //  2. Parsing was cancelled due to a timeout that was set by an earlier call to
@@ -165,6 +167,8 @@ func (p *Parser) IncludedRanges() (out []Range) {
 //     earlier call to [`ts_parser_set_cancellation_flag`]. You can resume parsing
 //     from where the parser left out by calling [`ts_parser_parse`] again with
 //     the same arguments.
+//  4. Parsing was cancelled due to the progress callback returning true. This callback
+//     is passed in [`ts_parser_parse_with_options`] inside the [`TSParseOptions`] struct.
 func (p *Parser) Parse(ctx context.Context, oldTree *Tree, input Input) (*Tree, error) {
 	var baseTree *C.TSTree
 

@@ -27,6 +27,28 @@ type Query struct {
 	generalPredicates  [][]QueryPredicate
 }
 
+// ParseState represents the state of a parse operation.
+type ParseState struct {
+	// Payload is an arbitrary pointer passed to the progress callback
+	Payload any
+	// CurrentByteOffset is the current byte offset of the parse operation
+	CurrentByteOffset uint32
+	// HasError indicates whether an error has occurred during parsing
+	HasError bool
+}
+
+// ProgressCallback is called during parsing to report progress and allow cancellation.
+// Return true to cancel parsing, false to continue.
+type ProgressCallback func(state ParseState) bool
+
+// ParseOptions contains options for the parser.
+type ParseOptions struct {
+	// Payload is an arbitrary pointer passed to the progress callback
+	Payload any
+	// ProgressCallback is called during parsing to report progress
+	ProgressCallback ProgressCallback
+}
+
 type Predicator func(_ *Query, _ QueryPredicateSteps, op string, row uint,
 	strVal, cptVal func(int) func() string) (any, error)
 
@@ -67,6 +89,26 @@ type PropertyPredicate struct {
 // QueryCursor is a stateful struct used to execute a query on a tree.
 type QueryCursor struct {
 	c *C.TSQueryCursor
+}
+
+// QueryCursorState represents the state of a query cursor operation.
+type QueryCursorState struct {
+	// Payload is an arbitrary pointer passed to the progress callback
+	Payload any
+	// CurrentByteOffset is the current byte offset of the query cursor operation
+	CurrentByteOffset uint32
+}
+
+// QueryProgressCallback is called during query execution to report progress and allow cancellation.
+// Return true to cancel the query, false to continue.
+type QueryProgressCallback func(state QueryCursorState) bool
+
+// QueryCursorOptions contains options for the query cursor.
+type QueryCursorOptions struct {
+	// Payload is an arbitrary pointer passed to the progress callback
+	Payload any
+	// ProgressCallback is called during query execution to report progress
+	ProgressCallback QueryProgressCallback
 }
 
 // QueryCapture is a captured node by a query with an index.
@@ -262,6 +304,16 @@ func NewQuery(lang *Language, pattern []byte) (q *Query, err error) {
 	return
 }
 
+// c converts the ParseOptions to a C.TSParseOptions
+//
+//nolint:godox // ok
+func (o ParseOptions) c() C.TSParseOptions {
+	return C.TSParseOptions{
+		payload:           unsafe.Pointer(&o.Payload),
+		progress_callback: nil, // TODO: o.ProgressCallback,
+	}
+}
+
 //nolint:nakedret // ok
 func fromRawParts(q *Query, pattern []byte) (_ *Query, err error) { //nolint:funlen,gocognit,cyclop // ok
 	// Build a vector of strings to store the capture names.
@@ -381,7 +433,7 @@ func (e QueryError) Unwrap() error {
 
 func newQueryError(lang *Language, pattern []byte, kind C.TSQueryError, errOfs C.uint) error {
 	if QueryErrorKind(kind) == QueryErrorLanguage {
-		lErr := LanguageError(lang.Version())
+		lErr := LanguageError(lang.ABIVersion())
 		return &QueryError{Kind: QueryErrorLanguage, inner: error(lErr), Point: voidPoint}
 	}
 
@@ -393,7 +445,7 @@ func newQueryError(lang *Language, pattern []byte, kind C.TSQueryError, errOfs C
 		lineContainingError string
 	)
 
-	for _, line := range bytes.Split(pattern, []byte("\n")) {
+	for line := range bytes.SplitSeq(pattern, []byte("\n")) {
 		lineEnd := lineStart + uint(len(line)) + 1
 		if lineEnd > offset {
 			lineContainingError = string(line)
@@ -651,6 +703,16 @@ func NewQueryCursor() (qc *QueryCursor) {
 	return
 }
 
+// c converts the QueryCursorOptions to a C.TSQueryCursorOptions
+//
+//nolint:godox // ok
+func (o QueryCursorOptions) c() C.TSQueryCursorOptions {
+	return C.TSQueryCursorOptions{
+		payload:           unsafe.Pointer(&o.Payload),
+		progress_callback: nil, // TODO: pass o.ProgressCallback somehow, TBD.
+	}
+}
+
 func newQueryMatch(m *C.TSQueryMatch, cursor *QueryCursor) *QueryMatch {
 	var captures []QueryCapture
 
@@ -730,13 +792,37 @@ func (c *QueryCursor) Timeout() (micros int) {
 }
 
 // SetByteRange sets the range of bytes in which the query will be executed.
-func (c *QueryCursor) SetByteRange(start, end uint32) {
-	C.ts_query_cursor_set_byte_range(c.c, C.uint(start), C.uint(end))
+//
+// The query cursor will return matches that intersect with the given point range.
+// This means that a match may be returned even if some of its captures fall
+// outside the specified range, as long as at least part of the match
+// overlaps with the range.
+//
+// For example, if a query pattern matches a node that spans a larger area
+// than the specified range, but part of that node intersects with the range,
+// the entire match will be returned.
+//
+// This will return `false` if the start byte is greater than the end byte, otherwise
+// it will return `true`.
+func (c *QueryCursor) SetByteRange(start, end uint32) bool {
+	return bool(C.ts_query_cursor_set_byte_range(c.c, C.uint(start), C.uint(end)))
 }
 
-// SetPointRange sets the range of row/column positions in which the query will be executed.
-func (c *QueryCursor) SetPointRange(start, end Point) {
-	C.ts_query_cursor_set_point_range(c.c, start.c(), end.c())
+// SetPointRange sets the range of (row, column) positions in which the query will be executed.
+//
+// The query cursor will return matches that intersect with the given point range.
+// This means that a match may be returned even if some of its captures fall
+// outside the specified range, as long as at least part of the match
+// overlaps with the range.
+//
+// For example, if a query pattern matches a node that spans a larger area
+// than the specified range, but part of that node intersects with the range,
+// the entire match will be returned.
+//
+// This will return `false` if the start point is greater than the end point, otherwise
+// it will return `true`.
+func (c *QueryCursor) SetPointRange(start, end Point) bool {
+	return bool(C.ts_query_cursor_set_point_range(c.c, start.c(), end.c()))
 }
 
 func (c *QueryCursor) NextMatch() (_ *QueryMatch) {
@@ -963,6 +1049,17 @@ func (c *QueryCursor) exec(q *Query, n Node) {
 	// C.ts_query_cursor_exec(c.c, q.c, n.c)
 	C.ts_query_cursor_exec(x, y, z)
 }
+
+// exec executes the query on a given syntax node, with options
+//nolint:godox // ok
+/* TODO
+func (c *QueryCursor) exec2(q *Query, n Node, opts QueryCursorOptions) {
+	x := c.c
+	y := q.c
+	z := n.c
+	// C.ts_query_cursor_exec(c.c, q.c, n.c)
+	C.ts_query_cursor_exec_with_options(x, y, z, opts.c())
+}*/
 
 // Non API.
 

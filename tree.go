@@ -149,6 +149,13 @@ func (t *Tree) Edit(i InputEdit) {
 // You need to pass the old tree that was passed to parse, as well as the new
 // tree that was returned from that function.
 //
+// The returned ranges indicate areas where the hierarchical structure of syntax
+// nodes (from root to leaf) has changed between the old and new trees. Characters
+// outside these ranges have identical ancestor nodes in both trees.
+//
+// Note that the returned ranges may be slightly larger than the exact changed areas,
+// but Tree-sitter attempts to make them as small as possible.
+//
 // The returned array is allocated using `malloc` and the caller is responsible
 // for freeing it using `free`. The length of the array will be written to the
 // given `length` pointer.
