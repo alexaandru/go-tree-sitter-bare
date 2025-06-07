@@ -156,26 +156,15 @@ func (n Node) NextParseState() StateID {
 
 // Parent returns the node's immediate parent.
 //
-// Prefer `ts_node_child_containing_descendant` for
+// Prefer `ts_node_child_with_descendant` for
 // iterating over the node's ancestors.
 func (n Node) Parent() Node {
 	return newNode(C.ts_node_parent(n.c))
 }
 
-// ChildContainingDescendant returns the node's child that contains `descendant`.
-// Deprecated: use [`ts_node_contains_descendant`] instead, this will be removed in 0.25
-//
-// Get the node's child containing `descendant`. This will not return
-// the descendant if it is a direct child of `self`, for that use
-// `ts_node_contains_descendant`.
-func (n Node) ChildContainingDescendant(d Node) Node {
-	return newNode(C.ts_node_child_containing_descendant(n.c, d.c))
-}
-
 // ChildWithDescendant returns the node that contains `descendant`.
 //
-// NOTE: that this can return `descendant` itself, unlike the deprecated function
-// [`ts_node_child_containing_descendant`].
+// NOTE: that this can return `descendant` itself.
 func (n Node) ChildWithDescendant(d Node) Node {
 	return newNode(C.ts_node_child_with_descendant(n.c, d.c))
 }
@@ -254,14 +243,14 @@ func (n Node) PrevNamedSibling() Node {
 	return newNode(C.ts_node_prev_named_sibling(n.c))
 }
 
-// FirstChildForByte returns the node's first child that extends beyond the
-// given byte offset.
+// FirstChildForByte returns the node's first child that contains or starts after
+// the given byte offset.
 func (n Node) FirstChildForByte(ofs uint32) Node {
 	return newNode(C.ts_node_first_child_for_byte(n.c, C.uint(ofs)))
 }
 
-// FirstNamedChildForByte returns the node's first named child that extends
-// beyond the given byte offset.
+// FirstNamedChildForByte returns the node's first named child that contains or starts
+// after the given byte offset.
 func (n Node) FirstNamedChildForByte(ofs uint32) Node {
 	return newNode(C.ts_node_first_named_child_for_byte(n.c, C.uint(ofs)))
 }

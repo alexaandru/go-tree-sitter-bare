@@ -163,12 +163,30 @@ func TestLanguageSymbolType(t *testing.T) {
 	t.Skip("tested implicitly via TestLanguage()")
 }
 
-func TestLanguageVersion(t *testing.T) {
+func TestLanguageABIVersion(t *testing.T) {
 	t.Parallel()
 
 	exp := TREE_SITTER_LANGUAGE_VERSION
-	if act := gr.Version(); act != exp {
+	if act := gr.ABIVersion(); act != exp {
 		t.Fatalf("Expected %d, got %d", exp, act)
+	}
+}
+
+func TestLanguageMetadata(t *testing.T) {
+	t.Parallel()
+
+	exp := LanguageMetadata{15, 1, 2}
+	if act := gr.Metadata(); act != exp {
+		t.Fatalf("Expected %v, got %v", exp, act)
+	}
+}
+
+func TestLanguageName(t *testing.T) {
+	t.Parallel()
+
+	exp := "test_grammar"
+	if act := gr.Name(); act != exp {
+		t.Fatalf("Expected %q, got %q", exp, act)
 	}
 }
 

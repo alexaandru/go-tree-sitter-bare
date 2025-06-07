@@ -17,6 +17,9 @@ type TreeCursor struct {
 // A tree cursor allows you to walk a syntax tree more efficiently than is
 // possible using the [`TSNode`] functions. It is a mutable object that is always
 // on a certain syntax node, and can be moved imperatively to different nodes.
+//
+// Note that the given node is considered the root of the cursor,
+// and the cursor cannot walk outside this node.
 func NewTreeCursor(n Node) (c *TreeCursor) {
 	return newTreeCursor(C.ts_tree_cursor_new(n.c))
 }
@@ -68,6 +71,9 @@ func (c *TreeCursor) CurrentFieldID() FieldID {
 //
 // This returns `true` if the cursor successfully moved, and returns `false`
 // if there was no parent node (the cursor was already on the root node).
+//
+// Note that the node the cursor was constructed with is considered the root
+// of the cursor, and the cursor cannot walk outside this node.
 func (c *TreeCursor) GoToParent() bool {
 	return bool(C.ts_tree_cursor_goto_parent(c.c))
 }
@@ -76,6 +82,9 @@ func (c *TreeCursor) GoToParent() bool {
 //
 // This returns `true` if the cursor successfully moved, and returns `false`
 // if there was no next sibling node.
+//
+// Note that the node the cursor was constructed with is considered the root
+// of the cursor, and the cursor cannot walk outside this node.
 func (c *TreeCursor) GoToNextSibling() bool {
 	return bool(C.ts_tree_cursor_goto_next_sibling(c.c))
 }
@@ -87,8 +96,10 @@ func (c *TreeCursor) GoToNextSibling() bool {
 //
 // Note, that this function may be slower than
 // `ts_tree_cursor_goto_next_sibling` due to how node positions are stored. In
-// the worst case, this will need to iterate through all the children upto the
-// previous sibling node to recalculate its position.
+// the worst case, this will need to iterate through all the children up to the
+// previous sibling node to recalculate its position. Also note that the node the cursor
+// was constructed with is considered the root of the cursor, and the cursor cannot
+// walk outside this node.
 func (c *TreeCursor) GotoPreviousSibling() bool {
 	return bool(C.ts_tree_cursor_goto_previous_sibling(c.c))
 }
@@ -133,7 +144,7 @@ func (c *TreeCursor) CurrentDepth() uint32 {
 }
 
 // GoToFirstChildForByte moves the cursor to the first child of its current node
-// that extends beyond the given byte offset.
+// that contains or starts after the given byte offset.
 //
 // This returns the index of the child node if one was found, and returns -1
 // if no such child was found.
@@ -142,7 +153,7 @@ func (c *TreeCursor) GoToFirstChildForByte(b uint32) int64 {
 }
 
 // GoToFirstChildForPoint moves the cursor to the first child of its current node
-// that extends beyond the given point.
+// that contains or starts after the given point.
 //
 // This returns the index of the child node if one was found, and returns -1
 // if no such child was found.
